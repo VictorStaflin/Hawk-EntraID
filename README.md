@@ -27,13 +27,14 @@ Before running the script, ensure you have the following:
    ```powershell
    Install-Module Microsoft.Graph -Scope CurrentUser
    ```
-
-3. **Azure AD Permissions**  
+2. **Powershell v7**
+   
+4. **Azure AD Permissions**  
    The following permissions are required in Azure AD to retrieve application information:
    - `Application.Read.All`
    - `Directory.Read.All`
 
-4. **Internet Connection**  
+5. **Internet Connection**  
    The script communicates with Microsoft Graph, so an active internet connection is required.
 
 ## Usage
