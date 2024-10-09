@@ -68,6 +68,7 @@ Follow these steps to run the script and generate the report:
    ```powershell
    Get-Module -ListAvailable
    ```
+   **Powershell 7**: Make sure to run the script with Powershell 7: https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.4
 - **Internet Connection**: Ensure that your internet connection is active, as the script communicates with the Microsoft Graph API.
 
 Image:![image](https://github.com/user-attachments/assets/7632f25a-7512-4041-9eb5-9ee50c1cb3b6)
