@@ -39,8 +39,8 @@ to export the data as a CSV file.
 # --------------------------------------------
 
 Write-Host "📦 Loading Modules..." -ForegroundColor Cyan
-Import-Module Microsoft.Graph -ErrorAction Stop
-Import-Module ImportExcel -ErrorAction SilentlyContinue
+#Import-Module Microsoft.Graph -ErrorAction Stop
+#Import-Module ImportExcel -ErrorAction SilentlyContinue
 Add-Type -AssemblyName System.Web
 
 Write-Host "✅ Modules Loaded Successfully" -ForegroundColor Green
@@ -62,8 +62,6 @@ Write-Host "✅ Connected to Microsoft Graph!" -ForegroundColor Green
 # Prompt user with a default of "No" for including built-in applications
 $includeBuiltIn = Read-Host "Include Microsoft built-in applications? (y/N) [default: N]"
 $includeBuiltIn = if ($includeBuiltIn -eq 'y') { $true } else { $false }
-
-
 
 # --------------------------------------------
 # 3. Define Helper Functions
@@ -140,7 +138,7 @@ function Is-BuiltInMicrosoftApp($app) {
         'Graph Connector Service', 'Configuration Manager Microservice', 'Power Platform Environment Discovery Service', 
         'Exchange Rbac', 'SPAuthEvent', 'Conferencing Virtual Assistant', 'Dataverse', 
         'OCaaS Client Interaction Service', 'Teams EHR Connector', 'All private resources with Global Secure Access', 
-        'Substrate Instant Revocation Pipeline', 'Windows Store for Business'
+        'Substrate Instant Revocation Pipeline', 'Windows Store for Business', 'Linkedin', 'BrowserStack'
     )
 
 
@@ -365,6 +363,10 @@ if ($filteredApps.Count -eq 0) {
             # Calculate risk score based on permissions and other factors
             $riskScore = Calculate-RiskScore $permissions.AppRoles $permissions.DelegatedPermissions
 
+            # Calculate days until credential expiration
+            $latestCredentialExpiration = ($app.PasswordCredentials | Sort-Object EndDateTime -Descending | Select-Object -First 1).EndDateTime
+            $daysUntilExpiry = if ($null -ne $latestCredentialExpiration) { ($latestCredentialExpiration - (Get-Date)).Days } else { $null }
+
             # Add data to csvData array
             $csvData += [PSCustomObject]@{
                 DisplayName = $app.DisplayName
@@ -372,7 +374,7 @@ if ($filteredApps.Count -eq 0) {
                 ApplicationID = $app.AppId
                 ObjectID = $app.Id
                 Created = $app.CreatedDateTime
-                LatestCredentialExpiration = ($app.PasswordCredentials | Sort-Object EndDateTime -Descending | Select-Object -First 1).EndDateTime
+                LatestCredentialExpiration = $latestCredentialExpiration
                 SignInAudience = $app.SignInAudience
                 VerifiedPublisher = if ($app.VerifiedPublisher) { "Yes" } else { "No" }
                 PasswordCredentialsCount = ($app.PasswordCredentials | Measure-Object).Count
@@ -380,6 +382,8 @@ if ($filteredApps.Count -eq 0) {
                 ApplicationPermissions = $appRolesString
                 DelegatedPermissions = $delegatedPermissionsString
                 RiskScore = [Math]::Min(10, $riskScore)  # Cap at 10
+                DaysUntilExpiry = $daysUntilExpiry
+                ExpiryStatus = if ($null -eq $daysUntilExpiry) { "No Expiration" } elseif ($daysUntilExpiry -lt 0) { "Expired" } elseif ($daysUntilExpiry -le 30) { "Expiring Soon" } else { "Valid" }
             }
         }
     }
@@ -437,6 +441,8 @@ if ($filteredServicePrincipals.Count -eq 0) {
             ApplicationPermissions = $appRolesString
             DelegatedPermissions = $delegatedPermissionsString
             RiskScore = [Math]::Min(10, $riskScore)  # Cap at 10
+            DaysUntilExpiry = $null
+            ExpiryStatus = "No Expiration"
         }
     }
     
@@ -458,6 +464,51 @@ $script:htmlContent = @"
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
         h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        
+        /* Info Section Styles */
+        .info-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .info-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+        }
+        
+        .info-table th,
+        .info-table td {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        
+        .info-table th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .info-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .info-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        
         .filter-section { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; background-color: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .filter-group label { font-weight: bold; }
         #exportBtn { background-color: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.3s; }
@@ -637,10 +688,158 @@ $script:htmlContent = @"
         .tooltip-content strong {
             color: #e74c3c;
         }
+        
+        /* Navbar Styles */
+        .navbar {
+            background-color: #2c3e50;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-item {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background-color: #34495e;
+        }
+
+        /* Application Details Table */
+        .app-details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .app-details-table th,
+        .app-details-table td {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .app-details-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        .app-details-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .risk-score-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .risk-indicator {
+            height: 8px;
+            flex: 1;
+            background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .risk-marker {
+            position: absolute;
+            width: 4px;
+            height: 12px;
+            background-color: #2c3e50;
+            top: -2px;
+            transform: translateX(-50%);
+        }
     </style>
 </head>
 <body>
     <h1>App registrations and Enterprise Apps Permissions Report</h1>
+    
+    <div class="info-section">
+        <h2>Enterprise Applications Overview</h2>
+        <table class="info-table">
+            <tr>
+                <th>Topic</th>
+                <th>Description</th>
+                <th>Security Impact</th>
+            </tr>
+            <tr>
+                <td>Enterprise Applications</td>
+                <td>Service principal objects in Microsoft Entra (formerly Azure AD) that represent applications integrated into the organization's Entra tenant. These enable users or systems to authenticate and interact with external or internal services securely.</td>
+                <td>Proper configuration is crucial as these applications have access to organizational resources.</td>
+            </tr>
+            <tr>
+                <td>Application Permissions</td>
+                <td>Grant an application direct, tenant-wide access to resources, bypassing individual user context. Often used for services running without user interaction.</td>
+                <td>If misconfigured, applications with tenant-wide access can expose all user data or critical systems. A breach could compromise entire organization's data.</td>
+            </tr>
+            <tr>
+                <td>Delegated Permissions</td>
+                <td>Allow an application to act on behalf of a user, inheriting the user's permissions and requiring user sign-in for authentication.</td>
+                <td>If compromised, an attacker could perform actions using the user's identity, limited to the user's permissions.</td>
+            </tr>
+            <tr>
+                <td>Tenant-wide Consent</td>
+                <td>Permissions that apply across the entire organization ("consent on behalf of organization").</td>
+                <td>Due to broad access, increases potential impact of a breach. When misused, sensitive data could be exposed across the organization.</td>
+            </tr>
+            <tr>
+                <td>Individual/Group Consent</td>
+                <td>Access restricted to specific users or groups.</td>
+                <td>Reduces blast radius if compromised. Limits exposure of sensitive data.</td>
+            </tr>
+        </table>
+
+        <h2>Recommended Security Settings</h2>
+        <table class="info-table">
+            <tr>
+                <th>Setting</th>
+                <th>Recommendation</th>
+                <th>Rationale</th>
+            </tr>
+            <tr>
+                <td>User Settings</td>
+                <td>Set 'User can register applications' to No</td>
+                <td>Prevents users from creating application registrations. Grant ability back to specific individuals through application developer role.</td>
+            </tr>
+            <tr>
+                <td>User Consent</td>
+                <td>Set 'User consent for applications' to 'Do not allow user consent'</td>
+                <td>Ensures all application permission requests go through proper administrative review.</td>
+            </tr>
+            <tr>
+                <td>Admin Consent Workflow</td>
+                <td>Enable admin consent workflow</td>
+                <td>Provides secure process for granting access to applications requiring administrator approval. Users can submit requests for admin review.</td>
+            </tr>
+        </table>
+    </div>
+
     <div class="filter-section">
         <div class="filter-group">
             <label for="riskScoreFilter">Minimum Risk Score:</label>
@@ -650,6 +849,20 @@ $script:htmlContent = @"
                 <option value="5">5+ (High Risk)</option>
                 <option value="8">8+ (Critical Risk)</option>
             </select>
+        </div>
+        <div class="filter-group">
+            <label for="expiryFilter">Credential Expiration Status:</label>
+            <select id="expiryFilter">
+                <option value="all">All</option>
+                <option value="expired">Expired</option>
+                <option value="expiring">Expiring Soon</option>
+                <option value="valid">Valid</option>
+                <option value="none">No Expiration</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="daysFilter">Days Until Expiration:</label>
+            <input type="number" id="daysFilter" placeholder="Enter days">
         </div>
         
         <!-- Info icon with tooltip content -->
@@ -696,20 +909,73 @@ $script:htmlContent = @"
 
 foreach ($row in $csvData) {
 $htmlAppContent = @"
-        <div class='app $(if ([int]$row.RiskScore -gt 7) { "high-risk" })' data-apptype='$([System.Web.HttpUtility]::HtmlEncode($row.AppType))' data-riskscore='$([System.Web.HttpUtility]::HtmlEncode($row.RiskScore))'>
+        <div class='app $(if ([int]$row.RiskScore -gt 7) { "high-risk" })' 
+             data-apptype='$([System.Web.HttpUtility]::HtmlEncode($row.AppType))' 
+             data-riskscore='$([System.Web.HttpUtility]::HtmlEncode($row.RiskScore))'
+             data-expirystatus='$([System.Web.HttpUtility]::HtmlEncode($row.ExpiryStatus))'
+             data-daysuntilexpiry='$([System.Web.HttpUtility]::HtmlEncode($row.DaysUntilExpiry))'>
             <div class='app-name'>$([System.Web.HttpUtility]::HtmlEncode($row.DisplayName))</div>
-            <div class='app-type'>App Type: $([System.Web.HttpUtility]::HtmlEncode($row.AppType))</div>
-            <div class='app-id'>Application ID: $([System.Web.HttpUtility]::HtmlEncode($row.ApplicationID))</div>
-            <div class='object-id'>Object ID: $([System.Web.HttpUtility]::HtmlEncode($row.ObjectID))</div>
-            <div class='app-dates'>Created: $([System.Web.HttpUtility]::HtmlEncode($row.Created)) | Latest Credential Expiration: $([System.Web.HttpUtility]::HtmlEncode($row.LatestCredentialExpiration))</div>
-            <div class='app-details'>
-                <div>Sign-in Audience: $([System.Web.HttpUtility]::HtmlEncode($row.SignInAudience))</div>
-                <div>Verified Publisher: $([System.Web.HttpUtility]::HtmlEncode($row.VerifiedPublisher))</div>
-                <div>Password Credentials Count: $([System.Web.HttpUtility]::HtmlEncode($row.PasswordCredentialsCount))</div>
-                <div>Owners: $([System.Web.HttpUtility]::HtmlEncode($row.Owners))</div>
-                <div>Risk Score: <span class='risk-score $(if ([int]$row.RiskScore -ge 8) { "critical" })'>$([System.Web.HttpUtility]::HtmlEncode($row.RiskScore)) / 10</span></div>
-            </div>
-
+            <table class='app-details-table'>
+                <tr>
+                    <th>Property</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Application ID</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.ApplicationID))</td>
+                </tr>
+                <tr>
+                    <td>Object ID</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.ObjectID))</td>
+                </tr>
+                <tr>
+                    <td>Created</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.Created))</td>
+                </tr>
+                <tr>
+                    <td>Latest Credential Expiration</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.LatestCredentialExpiration))</td>
+                </tr>
+                <tr>
+                    <td>Days Until Expiry</td>
+                    <td>$(
+                        if ($null -eq $row.DaysUntilExpiry) {
+                            "<span class='expiry-status expiry-none'>No expiration</span>"
+                        } elseif ($row.DaysUntilExpiry -lt 0) {
+                            "<span class='expiry-status expiry-expired'>Expired ($($row.DaysUntilExpiry * -1) days ago)</span>"
+                        } elseif ($row.DaysUntilExpiry -le 30) {
+                            "<span class='expiry-status expiry-soon'>Expiring in $($row.DaysUntilExpiry) days</span>"
+                        } else {
+                            "<span class='expiry-status expiry-valid'>Valid ($($row.DaysUntilExpiry) days remaining)</span>"
+                        }
+                    )</td>
+                </tr>
+                <tr>
+                    <td>Sign-in Audience</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.SignInAudience))</td>
+                </tr>
+                <tr>
+                    <td>Verified Publisher</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.VerifiedPublisher))</td>
+                </tr>
+                <tr>
+                    <td>Password Credentials Count</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.PasswordCredentialsCount))</td>
+                </tr>
+                <tr>
+                    <td>Owners</td>
+                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.Owners))</td>
+                </tr>
+                <tr>
+                    <td>Risk Score</td>
+                    <td class='risk-score-cell'>
+                        $([System.Web.HttpUtility]::HtmlEncode($row.RiskScore)) / 10
+                        <div class='risk-indicator'>
+                            <div class='risk-marker' style='left: $($row.RiskScore * 10)%'></div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
             <div class='permissions-title'>API Permissions:</div>
             <div class='permission-type'>Application Permissions:</div>
             <div class='permission-list'>
@@ -743,12 +1009,60 @@ $script:htmlContent += @"
 
         document.addEventListener('DOMContentLoaded', function() {
             const riskScoreFilter = document.getElementById('riskScoreFilter');
+            const expiryFilter = document.getElementById('expiryFilter');
+            const daysFilter = document.getElementById('daysFilter');
+            const apps = document.querySelectorAll('.app');
 
-            // Apply filters on change
-            riskScoreFilter.addEventListener('change', applyFilters);
+            function filterApps() {
+                const selectedRiskScore = parseInt(riskScoreFilter.value);
+                const selectedExpiry = expiryFilter.value;
+                const selectedDays = parseInt(daysFilter.value);
 
-            // Initial filter application
-            applyFilters();
+                apps.forEach(app => {
+                    const riskScore = parseInt(app.dataset.riskscore);
+                    const expiryStatus = app.dataset.expirystatus;
+                    const daysUntilExpiry = parseInt(app.dataset.daysuntilexpiry);
+                    
+                    let showApp = true;
+
+                    // Risk Score Filter
+                    if (selectedRiskScore > 0 && riskScore < selectedRiskScore) {
+                        showApp = false;
+                    }
+
+                    // Expiry Status Filter
+                    if (selectedExpiry !== 'all') {
+                        switch(selectedExpiry) {
+                            case 'expired':
+                                if (expiryStatus !== 'Expired') showApp = false;
+                                break;
+                            case 'expiring':
+                                if (expiryStatus !== 'Expiring Soon') showApp = false;
+                                break;
+                            case 'valid':
+                                if (expiryStatus !== 'Valid') showApp = false;
+                                break;
+                            case 'none':
+                                if (expiryStatus !== 'No Expiration') showApp = false;
+                                break;
+                        }
+                    }
+
+                    // Days Until Expiry Filter
+                    if (selectedDays && !isNaN(selectedDays)) {
+                        if (isNaN(daysUntilExpiry) || daysUntilExpiry > selectedDays || daysUntilExpiry < 0) {
+                            showApp = false;
+                        }
+                    }
+
+                    app.style.display = showApp ? 'block' : 'none';
+                });
+            }
+
+            // Add event listeners to filters
+            riskScoreFilter.addEventListener('change', filterApps);
+            expiryFilter.addEventListener('change', filterApps);
+            daysFilter.addEventListener('change', filterApps);
         });
 
         function exportToCSV() {
@@ -800,17 +1114,6 @@ $script:htmlContent += @"
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        }
-
-        function applyFilters() {
-            const minRiskScore = parseInt(document.getElementById('riskScoreFilter').value);
-            const apps = document.getElementsByClassName('app');
-
-            Array.from(apps).forEach(app => {
-                const riskScore = parseInt(app.getAttribute('data-riskscore'));
-                const shouldShow = riskScore >= minRiskScore;
-                app.style.display = shouldShow ? 'block' : 'none';
-            });
         }
     </script>
 </body>
