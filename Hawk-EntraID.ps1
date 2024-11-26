@@ -69,6 +69,17 @@ $includeBuiltIn = if ($includeBuiltIn -eq 'y') { $true } else { $false }
 
 # Function to check if an app is built-in Microsoft app
 function Is-BuiltInMicrosoftApp($app) {
+    # First check if it's a managed identity (these are built-in)
+    if ($app.ServicePrincipalType -eq "ManagedIdentity") {
+        return $true
+    }
+
+    # Check if it's a built-in app type
+    if ($app.Tags -contains "WindowsAzureActiveDirectoryIntegratedApp" -or 
+        $app.Tags -contains "WindowsAzureActiveDirectoryGalleryApplicationPrimary") {
+        return $true
+    }
+
     # List of known built-in Microsoft apps
     $builtInApps = @(
         'Microsoft Flow Service', 'Microsoft Teams AadSync', 'Azure Information Protection', 
@@ -142,7 +153,100 @@ function Is-BuiltInMicrosoftApp($app) {
     )
 
 
-    return $builtInApps -contains $app.DisplayName
+    # Check if the app name is in our known list
+    if ($builtInApps -contains $app.DisplayName) {
+        return $true
+    }
+
+    # Check for common Microsoft app patterns
+    $microsoftPatterns = @(
+        '^Microsoft',
+        '^MS\s',
+        '^Office\s',
+        '^Azure\s',
+        '^Windows\s',
+        '^SharePoint\s',
+        '^Teams\s',
+        '^Dynamics\s',
+        '^Power\s',
+        '^Graph\s',
+        'Microsoft$',
+        '\sOnline$',
+        'Azure$',
+        '^AAD\s',
+        'Intune$',
+        'Exchange$',
+        'Outlook$',
+        'Skype$',
+        'Yammer$',
+        'Defender$',
+        'PowerBI$',
+        'PowerApps$',
+        'Flow$',
+        'Substrate',
+        'Cortana',
+        'CPIM Service',
+        'Workflow',
+        'MIP',
+        'Fabric',
+        'Compliance',
+        'Universal Print',
+        'Bing',
+        'OneDrive',
+        'OneNote',
+        'Sway',
+        'Viva',
+        'M365',
+        'GSA-$',
+        'Linkedin',
+        'Box',
+        'Salesforce'
+    )
+
+    foreach ($pattern in $microsoftPatterns) {
+        if ($app.DisplayName -match $pattern) {
+            return $true
+        }
+    }
+
+    # Check publisher domain if available
+    if ($app.PublisherDomain -like "*.microsoft.com") {
+        return $true
+    }
+
+    # Check service principal specific properties
+    if ($app.ServicePrincipalType -eq "Application") {
+        # Check if it's published by Microsoft
+        if ($app.PublisherName -like "*Microsoft*") {
+            return $true
+        }
+
+        # Check the app ID prefix (many Microsoft apps start with specific GUIDs)
+        $microsoftAppIdPrefixes = @(
+            "00000001-", "00000002-", "00000003-", "00000004-",
+            "00000005-", "00000006-", "00000007-", "00000008-",
+            "00000009-", "0000000a-", "0000000b-", "0000000c-"
+        )
+        foreach ($prefix in $microsoftAppIdPrefixes) {
+            if ($app.AppId -like "$prefix*") {
+                return $true
+            }
+        }
+    }
+
+    # Additional checks for service principals
+    if ($app.PSObject.Properties.Name -contains "ServicePrincipalNames") {
+        foreach ($spn in $app.ServicePrincipalNames) {
+            if ($spn -like "*.microsoft.com" -or 
+                $spn -like "*microsoftonline*" -or 
+                $spn -like "*windows.net" -or 
+                $spn -like "*azure.*") {
+                return $true
+            }
+        }
+    }
+
+    return $false
 }
 
 function Get-AppPermissions($servicePrincipal) {
@@ -328,7 +432,7 @@ function Calculate-RiskScore($appRoles, $delegatedPermissions) {
 Write-Host "🔄 Retrieving all Applications from Microsoft Graph..." -ForegroundColor Yellow
 $allApps = Get-MgApplication -All -ErrorAction SilentlyContinue
 
-if (-not $includeBuiltIn) {  # Changed condition
+if (-not $includeBuiltIn) {  
     Write-Host "🔄 Filtering out built-in Microsoft applications..." -ForegroundColor Yellow
     $filteredApps = $allApps | Where-Object { -not (Is-BuiltInMicrosoftApp $_) }
     $totalAppsToProcess = $filteredApps.Count
@@ -395,11 +499,22 @@ if ($filteredApps.Count -eq 0) {
 Write-Host "🔄 Retrieving all Enterprise Apps (Service Principals) from Microsoft Graph..." -ForegroundColor Yellow
 $allServicePrincipals = Get-MgServicePrincipal -All -ErrorAction SilentlyContinue
 
-if (-not $includeBuiltIn) {  # Changed condition
+if (-not $includeBuiltIn) {
     Write-Host "🔄 Filtering out built-in Microsoft Enterprise Apps..." -ForegroundColor Yellow
-    $filteredServicePrincipals = $allServicePrincipals | Where-Object { -not (Is-BuiltInMicrosoftApp $_) }
+    $VerbosePreference = "Continue"
+    
+    $filteredServicePrincipals = $allServicePrincipals | Where-Object {
+        $isBuiltIn = Is-BuiltInMicrosoftApp $_
+        if ($isBuiltIn) {
+            Write-Verbose "Filtering out: $($_.DisplayName) (Type: $($_.ServicePrincipalType))"
+        }
+        -not $isBuiltIn
+    }
+    
+    $VerbosePreference = "SilentlyContinue"
     $totalSPsToProcess = $filteredServicePrincipals.Count
     Write-Host "✅ Found $totalSPsToProcess non-built-in Enterprise Apps to process!" -ForegroundColor Green
+    Write-Host "ℹ️ Filtered out $($allServicePrincipals.Count - $totalSPsToProcess) built-in Microsoft apps" -ForegroundColor Cyan
 } else {
     $filteredServicePrincipals = $allServicePrincipals
     $totalSPsToProcess = $allServicePrincipals.Count
@@ -449,676 +564,855 @@ if ($filteredServicePrincipals.Count -eq 0) {
     Write-Progress -Activity "Processing Enterprise Apps" -Completed
 }
 
-# --------------------------------------------
-# 8. Generating HTML Report
-# --------------------------------------------
-
-# Initialize HTML content with the header and styles
+# Create HTML report
 $script:htmlContent = @"
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Applications and Enterprise Apps Permissions Report</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Applications Security Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
-        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
-        
-        /* Info Section Styles */
-        .info-section {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .info-section h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-        }
-        
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background-color: white;
-        }
-        
-        .info-table th,
-        .info-table td {
-            padding: 12px;
-            border: 1px solid #e0e0e0;
-            text-align: left;
-        }
-        
-        .info-table th {
-            background-color: #3498db;
-            color: white;
-            font-weight: bold;
-        }
-        
-        .info-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-        
-        .info-table tr:hover {
-            background-color: #f1f1f1;
-        }
-        
-        .filter-section { margin-bottom: 20px; display: flex; align-items: center; gap: 15px; background-color: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .filter-group label { font-weight: bold; }
-        #exportBtn { background-color: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.3s; }
-        #exportBtn:hover { background-color: #27ae60; }
-        .app { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .high-risk { border: 2px solid #e74c3c; }
-        .critical-risk { border: 3px solid #c0392b; background-color: #ffebee; }
-        .app-name { color: #3498db; font-size: 1.4em; font-weight: bold; margin-bottom: 10px; }
-        .app-type { color: #8e44ad; font-size: 1em; font-weight: bold; margin-bottom: 10px; }
-        .app-id, .object-id { color: #7f8c8d; font-size: 0.9em; margin-bottom: 5px; }
-        .app-dates, .app-details { color: #7f8c8d; font-size: 0.9em; margin-bottom: 10px; }
-        .app-details div { margin-bottom: 5px; }
-        .risk-score { 
-            font-weight: bold; 
-            padding: 5px 10px; 
-            border-radius: 4px; 
-            display: inline-block; 
-        }
-        .risk-score.critical {
-            background-color: #ff4444;
-            color: white;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .risk-low { background-color: #dff0d8; color: #3c763d; }
-        .risk-medium { background-color: #fcf8e3; color: #8a6d3b; }
-        .risk-high { background-color: #f2dede; color: #a94442; }
-        .risk-critical { background-color: #d9534f; color: white; }
-        .permissions-title { color: #2c3e50; font-weight: bold; margin-top: 15px; font-size: 1.1em; }
-        .permission-type { font-weight: bold; margin-top: 10px; color: #34495e; }
-        .permission-list {
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 8px; 
-            margin: 10px 0; 
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-        }
-        .permission-tag {
-            display: inline-flex;
-            align-items: center;
-            background-color: #e9ecef;
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-size: 0.9em;
-            border: 1px solid #dee2e6;
-            transition: all 0.2s ease;
-        }
-        .permission-tag:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .permission-tag.write {
-            background-color: #ffe6e6;
-            border-color: #ffcccc;
-            color: #cc0000;
-        }
-        .permission-tag.read {
-            background-color: #e6f3ff;
-            border-color: #cce6ff;
-            color: #0066cc;
-        }
-        .none-permission {
-            background-color: #f8f9fa;
-            color: #6c757d;
-            border-color: #dee2e6;
-            font-style: italic;
-        }
-        .statistics { 
-            background-color: #3498db; 
-            color: white; 
-            padding: 15px; 
-            border-radius: 5px; 
-            margin-bottom: 20px; 
-            text-align: center; 
-        }
-         /* Info icon and tooltip styles */
-        .info-icon-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #3498db;
+        /* Core Layout Styles */
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #f8fafc;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
         }
 
-        .info-label {
-            font-weight: bold;
-            font-size: 1em;
-            color: #333;
-        }
-
-        .info-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            background-color: #3498db;
-            color: white;
-            font-weight: bold;
-            font-size: 0.9em;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.3s;
-            position: relative;
-        }
-
-        .info-icon:hover {
-            transform: scale(1.1);
-        }
-
-        /* Tooltip styling */
-        .tooltip-content {
-            display: none;
-            position: absolute;
-            top: -5px;
-            left: 35px;
-            width: 350px;
-            background-color: #ffffff;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            font-size: 0.9em;
-            line-height: 1.4;
-            color: #333;
-            z-index: 1000;
-        }
-
-        .info-icon:hover .tooltip-content {
-            display: block;
-        }
-
-        /* Tooltip arrow */
-        .tooltip-content::after {
-            content: "";
-            position: absolute;
-            top: 12px;
-            left: -8px;
-            border-width: 8px;
-            border-style: solid;
-            border-color: transparent #ddd transparent transparent;
-        }
-
-        .tooltip-content::before {
-            content: "";
-            position: absolute;
-            top: 12px;
-            left: -7px;
-            border-width: 8px;
-            border-style: solid;
-            border-color: transparent #fff transparent transparent;
-        }
-
-        /* Tooltip content text */
-        .tooltip-header {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 8px;
-        }
-
-        .tooltip-content p {
-            margin: 5px 0;
-        }
-
-        .tooltip-list {
-            margin: 10px 0;
+        * {
+            margin: 0;
             padding: 0;
-            list-style-type: disc;
-            padding-left: 20px;
+            box-sizing: border-box;
         }
 
-        .tooltip-content strong {
-            color: #e74c3c;
-        }
-        
-        /* Navbar Styles */
-        .navbar {
-            background-color: #2c3e50;
-            padding: 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background-color: #f1f5f9;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        .nav-content {
-            max-width: 1200px;
+        .container {
+            width: 100%;
+            max-width: 1400px;
             margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .header {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 1.5rem;
         }
 
-        .nav-menu {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .nav-item {
+        .export-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background-color: var(--primary-color);
             color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background-color 0.3s;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
             cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            text-decoration: none;
         }
 
-        .nav-item:hover {
-            background-color: #34495e;
+        .export-button:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
         }
 
-        /* Application Details Table */
-        .app-details-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
+        .export-button:active {
+            transform: translateY(0);
+        }
+
+        .export-button i {
+            font-size: 1rem;
+        }
+
+        .apps-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+            margin-top: 2rem;
+        }
+
+        .app-card {
+            display: flex !important;
+            flex-direction: column;
             background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            gap: 1rem;
         }
 
-        .app-details-table th,
-        .app-details-table td {
-            padding: 12px;
-            border: 1px solid #e0e0e0;
+        .app-card[style*="display: none"] {
+            display: none !important;
         }
 
-        .app-details-table th {
-            background-color: #f8f9fa;
-            font-weight: bold;
-            text-align: left;
+        .app-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--secondary-color);
         }
 
-        .app-details-table tr:nth-child(even) {
-            background-color: #f8f9fa;
+        .app-name {
+            font-size: clamp(1rem, 1.5vw, 1.125rem);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            word-break: break-word;
+            display: flex;
+            align-items: center;
         }
 
-        .risk-score-cell {
+        .app-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .app-body {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 1rem;
+            background-color: var(--secondary-color);
+            border-radius: 0.5rem;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .detail-value {
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .permissions-section {
+            margin-top: auto;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .permissions-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .permissions-list {
+            background-color: var(--secondary-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .app-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 0.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            margin-right: 0.75rem;
+        }
+
+        .app-icon i {
+            font-size: 1rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-badge.expired {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-badge.warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.valid {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge.no-expiry {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1.5rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .app-card {
+                border-radius: 0.75rem;
+            }
+
+            .app-header, .app-body {
+                padding: 1rem;
+            }
+
+            .detail-item {
+                padding: 0.75rem;
+            }
+
+            .permissions-section {
+                padding-top: 1rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #0f172a;
+                color: #f8fafc;
+            }
+
+            .header, .app-card {
+                background-color: #1e293b;
+            }
+
+            .detail-item, .permissions-list {
+                background-color: #334155;
+            }
+
+            select, input {
+                background-color: #334155;
+                color: #f8fafc;
+                border-color: #475569;
+            }
+
+            .app-header {
+                background-color: #1e293b;
+                border-color: #475569;
+            }
+        }
+
+        /* Security Enhancements - Keep these at the end to override base styles */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background-color: #1e293b;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            white-space: normal;
+            max-width: 300px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            z-index: 1000;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+        }
+
+        [data-tooltip]:hover:before {
+            opacity: 1;
+            visibility: visible;
+            bottom: calc(100% + 5px);
+        }
+
+        .risk-score {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .risk-score.critical {
+            background-color: #dc2626 !important;
+            color: white !important;
+        }
+
+        .risk-score.high {
+            background-color: #ef4444 !important;
+            color: white !important;
+        }
+
+        .risk-score.medium {
+            background-color: #f97316 !important;
+            color: white !important;
+        }
+
+        .risk-score.low {
+            background-color: #22c55e !important;
+            color: white !important;
+        }
+
+        .permission-item {
+            margin: 4px 0;
+            padding: 8px 12px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s ease;
         }
 
-        .risk-indicator {
-            height: 8px;
-            flex: 1;
-            background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c);
-            border-radius: 4px;
-            position: relative;
+        .permission-item.critical {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border-left: 4px solid #dc2626;
         }
 
-        .risk-marker {
-            position: absolute;
-            width: 4px;
-            height: 12px;
-            background-color: #2c3e50;
-            top: -2px;
-            transform: translateX(-50%);
+        .permission-item.high {
+            background-color: #fef2f2 !important;
+            color: #991b1b !important;
+            border-left: 4px solid #ef4444;
+        }
+
+        .permission-item.elevated {
+            background-color: #faf5ff !important;
+            color: #6b21a8 !important;
+            border-left: 4px solid #9333ea;
+        }
+
+        .permission-item.moderate {
+            background-color: #eff6ff !important;
+            color: #1e40af !important;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .permission-item.low {
+            background-color: #f0fdf4 !important;
+            color: #166534 !important;
+            border-left: 4px solid #22c55e;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .permission-item.critical {
+                background-color: rgba(220, 38, 38, 0.1) !important;
+                color: #fca5a5 !important;
+            }
+
+            .permission-item.high {
+                background-color: rgba(239, 68, 68, 0.1) !important;
+                color: #fca5a5 !important;
+            }
+
+            .permission-item.elevated {
+                background-color: rgba(147, 51, 234, 0.1) !important;
+                color: #e9d5ff !important;
+            }
+
+            .permission-item.moderate {
+                background-color: rgba(59, 130, 246, 0.1) !important;
+                color: #bfdbfe !important;
+            }
+
+            .permission-item.low {
+                background-color: rgba(34, 197, 94, 0.1) !important;
+                color: #86efac !important;
+            }
+
+            [data-tooltip]:before {
+                background-color: #0f172a;
+                border: 1px solid #334155;
+            }
+        }
+        
+        .filter-stats {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-align: right;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: var(--card-shadow);
+            margin-top: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            background-color: white;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .filter-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        .filter-group select {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        .filter-stats {
+            grid-column: 1 / -1;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .filters {
+                background-color: var(--dark-card-bg);
+            }
+
+            .filter-group input,
+            .filter-group select {
+                background-color: var(--dark-card-bg);
+                border-color: var(--dark-border-color);
+                color: var(--dark-text-primary);
+            }
+
+            .filter-group input::placeholder {
+                color: var(--dark-text-secondary);
+            }
+
+            .filter-group select {
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            }
+
+            .filter-stats {
+                border-color: var(--dark-border-color);
+                color: var(--dark-text-secondary);
+            }
         }
     </style>
 </head>
 <body>
-    <h1>App registrations and Enterprise Apps Permissions Report</h1>
-    
-    <div class="info-section">
-        <h2>Enterprise Applications Overview</h2>
-        <table class="info-table">
-            <tr>
-                <th>Topic</th>
-                <th>Description</th>
-                <th>Security Impact</th>
-            </tr>
-            <tr>
-                <td>Enterprise Applications</td>
-                <td>Service principal objects in Microsoft Entra (formerly Azure AD) that represent applications integrated into the organization's Entra tenant. These enable users or systems to authenticate and interact with external or internal services securely.</td>
-                <td>Proper configuration is crucial as these applications have access to organizational resources.</td>
-            </tr>
-            <tr>
-                <td>Application Permissions</td>
-                <td>Grant an application direct, tenant-wide access to resources, bypassing individual user context. Often used for services running without user interaction.</td>
-                <td>If misconfigured, applications with tenant-wide access can expose all user data or critical systems. A breach could compromise entire organization's data.</td>
-            </tr>
-            <tr>
-                <td>Delegated Permissions</td>
-                <td>Allow an application to act on behalf of a user, inheriting the user's permissions and requiring user sign-in for authentication.</td>
-                <td>If compromised, an attacker could perform actions using the user's identity, limited to the user's permissions.</td>
-            </tr>
-            <tr>
-                <td>Tenant-wide Consent</td>
-                <td>Permissions that apply across the entire organization ("consent on behalf of organization").</td>
-                <td>Due to broad access, increases potential impact of a breach. When misused, sensitive data could be exposed across the organization.</td>
-            </tr>
-            <tr>
-                <td>Individual/Group Consent</td>
-                <td>Access restricted to specific users or groups.</td>
-                <td>Reduces blast radius if compromised. Limits exposure of sensitive data.</td>
-            </tr>
-        </table>
-
-        <h2>Recommended Security Settings</h2>
-        <table class="info-table">
-            <tr>
-                <th>Setting</th>
-                <th>Recommendation</th>
-                <th>Rationale</th>
-            </tr>
-            <tr>
-                <td>User Settings</td>
-                <td>Set 'User can register applications' to No</td>
-                <td>Prevents users from creating application registrations. Grant ability back to specific individuals through application developer role.</td>
-            </tr>
-            <tr>
-                <td>User Consent</td>
-                <td>Set 'User consent for applications' to 'Do not allow user consent'</td>
-                <td>Ensures all application permission requests go through proper administrative review.</td>
-            </tr>
-            <tr>
-                <td>Admin Consent Workflow</td>
-                <td>Enable admin consent workflow</td>
-                <td>Provides secure process for granting access to applications requiring administrator approval. Users can submit requests for admin review.</td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="filter-section">
-        <div class="filter-group">
-            <label for="riskScoreFilter">Minimum Risk Score:</label>
-            <select id="riskScoreFilter">
-                <option value="0">All</option>
-                <option value="3">3+ (Medium Risk)</option>
-                <option value="5">5+ (High Risk)</option>
-                <option value="8">8+ (Critical Risk)</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="expiryFilter">Credential Expiration Status:</label>
-            <select id="expiryFilter">
-                <option value="all">All</option>
-                <option value="expired">Expired</option>
-                <option value="expiring">Expiring Soon</option>
-                <option value="valid">Valid</option>
-                <option value="none">No Expiration</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="daysFilter">Days Until Expiration:</label>
-            <input type="number" id="daysFilter" placeholder="Enter days">
-        </div>
-        
-        <!-- Info icon with tooltip content -->
-        <div class="info-icon-container">
-            <span class="info-label">Info:</span>
-            <span class="info-icon" title="Click for risk evaluation details">i
-                <div class="tooltip-content">
-                    <div class="tooltip-header">Risk Evaluation Details</div>
-                    <p>This report assigns a risk score from <strong>1 to 10</strong> based on permissions associated with each application, focusing on sensitivity and access level:</p>
-                    
-                    <ul class="tooltip-list">
-                        <li><strong>Application Permissions</strong> are more sensitive as they grant direct access, contributing more to the risk score.</li>
-                        <li><strong>Delegated Permissions</strong> grant access through user context and have a lower impact on the score.</li>
-                        <li>High-risk permissions (e.g., write access) weigh more heavily than read-only permissions.</li>
-                        <li>Multiple high-privilege permissions further increase the score.</li>
-                    </ul>
-
-                    <p><strong>Scoring Breakdown:</strong></p>
-                    <ul class="tooltip-list">
-                        <li><strong>Critical Permissions</strong> (e.g., `Directory.ReadWrite.All`): 8 points for application, 6 for delegated.</li>
-                        <li><strong>High-Risk Permissions</strong> (e.g., `Files.ReadWrite.All`): 6 points for application, 4 for delegated.</li>
-                        <li><strong>Medium-Risk Permissions</strong> (e.g., `Mail.Send`): 4 points for application, 3 for delegated.</li>
-                        <li><strong>Low-Risk Permissions</strong> (e.g., `User.Read`): minimal impact on score.</li>
-                    </ul>
-
-                    <p>Additional factors:</p>
-                    <ul class="tooltip-list">
-                        <li>More than two password credentials add 1 point.</li>
-                        <li>Unverified publisher adds 1 point.</li>
-                    </ul>
-                    
-                    <p><strong>Note:</strong> This score provides a general risk evaluation. It is important to perform your own due diligence and align these evaluations with your organization’s security policies to ensure a thorough risk assessment.</p>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <h1>Enterprise Applications Security Report</h1>
+                <button class="export-button" onclick="exportToCSV()">
+                    <i class="fas fa-file-export"></i>
+                    Export to CSV
+                </button>
+            </div>
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="appNameFilter">Search Applications</label>
+                    <input type="text" id="appNameFilter" placeholder="Type to search...">
                 </div>
-            </span>
+                <div class="filter-group">
+                    <label for="riskScoreFilter">Risk Level</label>
+                    <select id="riskScoreFilter">
+                        <option value="all">All Risk Levels</option>
+                        <option value="critical">Critical (8-10)</option>
+                        <option value="high">High (6-7)</option>
+                        <option value="medium">Medium (4-5)</option>
+                        <option value="low">Low (0-3)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="appTypeFilter">Application Type</label>
+                    <select id="appTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="internal">Internal</option>
+                        <option value="external">External</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="expiryStatusFilter">Expiry Status</label>
+                    <select id="expiryStatusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="valid">Valid</option>
+                        <option value="expired">Expired</option>
+                        <option value="no-expiry">No Expiry</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-stats">Showing all applications</div>
         </div>
-
-        <!-- Export button -->
-        <button id="exportBtn" onclick="exportToCSV()">Export to CSV</button>
-    </div>
-</body>
+        <div class="apps-grid">
 "@
-
-
 
 foreach ($row in $csvData) {
-$htmlAppContent = @"
-        <div class='app $(if ([int]$row.RiskScore -gt 7) { "high-risk" })' 
-             data-apptype='$([System.Web.HttpUtility]::HtmlEncode($row.AppType))' 
-             data-riskscore='$([System.Web.HttpUtility]::HtmlEncode($row.RiskScore))'
-             data-expirystatus='$([System.Web.HttpUtility]::HtmlEncode($row.ExpiryStatus))'
-             data-daysuntilexpiry='$([System.Web.HttpUtility]::HtmlEncode($row.DaysUntilExpiry))'>
-            <div class='app-name'>$([System.Web.HttpUtility]::HtmlEncode($row.DisplayName))</div>
-            <table class='app-details-table'>
-                <tr>
-                    <th>Property</th>
-                    <th>Value</th>
-                </tr>
-                <tr>
-                    <td>Application ID</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.ApplicationID))</td>
-                </tr>
-                <tr>
-                    <td>Object ID</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.ObjectID))</td>
-                </tr>
-                <tr>
-                    <td>Created</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.Created))</td>
-                </tr>
-                <tr>
-                    <td>Latest Credential Expiration</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.LatestCredentialExpiration))</td>
-                </tr>
-                <tr>
-                    <td>Days Until Expiry</td>
-                    <td>$(
-                        if ($null -eq $row.DaysUntilExpiry) {
-                            "<span class='expiry-status expiry-none'>No expiration</span>"
-                        } elseif ($row.DaysUntilExpiry -lt 0) {
-                            "<span class='expiry-status expiry-expired'>Expired ($($row.DaysUntilExpiry * -1) days ago)</span>"
-                        } elseif ($row.DaysUntilExpiry -le 30) {
-                            "<span class='expiry-status expiry-soon'>Expiring in $($row.DaysUntilExpiry) days</span>"
-                        } else {
-                            "<span class='expiry-status expiry-valid'>Valid ($($row.DaysUntilExpiry) days remaining)</span>"
-                        }
-                    )</td>
-                </tr>
-                <tr>
-                    <td>Sign-in Audience</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.SignInAudience))</td>
-                </tr>
-                <tr>
-                    <td>Verified Publisher</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.VerifiedPublisher))</td>
-                </tr>
-                <tr>
-                    <td>Password Credentials Count</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.PasswordCredentialsCount))</td>
-                </tr>
-                <tr>
-                    <td>Owners</td>
-                    <td>$([System.Web.HttpUtility]::HtmlEncode($row.Owners))</td>
-                </tr>
-                <tr>
-                    <td>Risk Score</td>
-                    <td class='risk-score-cell'>
-                        $([System.Web.HttpUtility]::HtmlEncode($row.RiskScore)) / 10
-                        <div class='risk-indicator'>
-                            <div class='risk-marker' style='left: $($row.RiskScore * 10)%'></div>
+    # Determine if the app is internal or external based on SignInAudience
+    $appType = if ($row.SignInAudience -like "*AzureADMyOrg*") { 
+        "internal" 
+    } else { 
+        "external" 
+    }
+    
+    # Determine expiry status
+    $expiryStatus = if ($null -eq $row.DaysUntilExpiry) { 
+        "no-expiry" 
+    } elseif ($row.DaysUntilExpiry -lt 0) { 
+        "expired" 
+    } else { 
+        "valid" 
+    }
+
+    # Calculate risk score
+    $riskScore = [int]$row.RiskScore
+
+    $script:htmlContent += @"
+            <div class='app-card' 
+                data-apptype='$appType' 
+                data-expirystatus='$expiryStatus'
+                data-riskscore='$riskScore'>
+                <div class='app-header'>
+                    <div class='app-title'>
+                        <div class='app-icon'>
+                            <i class='fas fa-puzzle-piece'></i>
                         </div>
-                    </td>
-                </tr>
-            </table>
-            <div class='permissions-title'>API Permissions:</div>
-            <div class='permission-type'>Application Permissions:</div>
-            <div class='permission-list'>
-                $(if ([string]::IsNullOrWhiteSpace($row.ApplicationPermissions)) { 
-                    "<span class='permission-tag none-permission'>None</span>" 
-                } else { 
-                    Format-Permissions $row.ApplicationPermissions 
-                })
+                        <div class='app-name'>$([System.Web.HttpUtility]::HtmlEncode($row.DisplayName))</div>
+                    </div>
+                    <div class='app-meta'>
+                        <div class='risk-score $(
+                            if ($riskScore -ge 8) { "critical" }
+                            elseif ($riskScore -ge 6) { "high" }
+                            elseif ($riskScore -ge 4) { "medium" }
+                            else { "low" }
+                        )'>
+                            <i class='fas $(
+                                if ($riskScore -ge 8) { "fa-radiation-alt" }
+                                elseif ($riskScore -ge 6) { "fa-exclamation-triangle" }
+                                elseif ($riskScore -ge 4) { "fa-shield-alt" }
+                                else { "fa-check-circle" }
+                            )'></i>
+                            Risk Score: $riskScore
+                        </div>
+                        <div class='status-badge $expiryStatus'>
+                            <i class='fas $(
+                                if ($null -eq $row.DaysUntilExpiry) { "fa-infinity" }
+                                elseif ($row.DaysUntilExpiry -lt 0) { "fa-exclamation-circle" }
+                                else { "fa-check-circle" }
+                            )'></i>
+                            $(
+                                if ($null -eq $row.DaysUntilExpiry) {
+                                    "No Expiry"
+                                } elseif ($row.DaysUntilExpiry -lt 0) {
+                                    "Expired ($($row.DaysUntilExpiry * -1) days ago)"
+                                } else {
+                                    "Valid ($($row.DaysUntilExpiry) days)"
+                                }
+                            )
+                        </div>
+                    </div>
+                </div>
+                <div class='app-body'>
+                    <div class='detail-item' data-tooltip="Unique identifier for the application in Azure AD">
+                        <div class='detail-label'>Application ID:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.ApplicationID))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="Internal Azure AD object identifier">
+                        <div class='detail-label'>Object ID:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.ObjectID))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="Date when the application was registered in Azure AD">
+                        <div class='detail-label'>Created:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.Created))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="The expiration date of the most recently expiring credential">
+                        <div class='detail-label'>Latest Credential Expiration:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.LatestCredentialExpiration))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="Defines the type of user accounts that can access the application">
+                        <div class='detail-label'>Sign-in Audience:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.SignInAudience))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="Indicates if the application publisher has been verified by Microsoft">
+                        <div class='detail-label'>Verified Publisher:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.VerifiedPublisher))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="Number of active client secrets configured for the application">
+                        <div class='detail-label'>Password Credentials Count:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.PasswordCredentialsCount))</div>
+                    </div>
+                    <div class='detail-item' data-tooltip="Users who have administrative access to manage this application">
+                        <div class='detail-label'>Owners:</div>
+                        <div class='detail-value'>$([System.Web.HttpUtility]::HtmlEncode($row.Owners))</div>
+                    </div>
+                    <div class='permissions-section'>
+                        <div class='permissions-title' data-tooltip="Direct API permissions granted to the application">
+                            <i class='fas fa-key'></i>
+                            Application Permissions
+                        </div>
+                        <div class='permissions-list'>
+                            $(if ([string]::IsNullOrWhiteSpace($row.ApplicationPermissions)) { 
+                                "<div class='permission-item low' data-tooltip='No permissions have been granted'><i class='fas fa-ban'></i>None</div>" 
+                            } else { 
+                                ($row.ApplicationPermissions -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { 
+                                    $permClass = if ($_ -match '(FullControl|full_access|admin|.+Admin)') { 'critical' }
+                                               elseif ($_ -match '(Write|Delete|Create|Manage)') { 'high' }
+                                               elseif ($_ -match 'ReadWrite') { 'elevated' }
+                                               elseif ($_ -match 'Read') { 'moderate' }
+                                               else { 'low' }
+                                    
+                                    $tooltip = switch ($permClass) {
+                                        'critical' { "CRITICAL RISK: Full administrative access - Requires immediate security review" }
+                                        'high' { "HIGH RISK: Write/modify permissions - Can make system changes" }
+                                        'elevated' { "ELEVATED RISK: Combined read-write access - Extended privileges" }
+                                        'moderate' { "MODERATE RISK: Read-only access - Limited data exposure" }
+                                        'low' { "LOW RISK: Basic access - Minimal security impact" }
+                                    }
+                                    
+                                    $icon = switch ($permClass) {
+                                        'critical' { 'fa-user-shield' }
+                                        'high' { 'fa-pen-fancy' }
+                                        'elevated' { 'fa-edit' }
+                                        'moderate' { 'fa-eye' }
+                                        'low' { 'fa-info-circle' }
+                                    }
+                                    
+                                    "<div class='permission-item $permClass' data-tooltip='$tooltip'><i class='fas $icon'></i>$([System.Web.HttpUtility]::HtmlEncode($_.Trim()))</div>"
+                                }) -join ""
+                            })
+                        </div>
+                        <div class='permissions-title' data-tooltip="Permissions that the application has been granted to access other applications on behalf of users">
+                            <i class='fas fa-user-shield'></i>
+                            Delegated Permissions
+                        </div>
+                        <div class='permissions-list'>
+                            $(if ([string]::IsNullOrWhiteSpace($row.DelegatedPermissions)) { 
+                                "<div class='permission-item low' data-tooltip='No permissions have been granted'><i class='fas fa-ban'></i>None</div>" 
+                            } else { 
+                                ($row.DelegatedPermissions -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { 
+                                    $permClass = if ($_ -match '(FullControl|full_access|admin|.+Admin)') { 'critical' }
+                                               elseif ($_ -match '(Write|Delete|Create|Manage)') { 'high' }
+                                               elseif ($_ -match 'ReadWrite') { 'elevated' }
+                                               elseif ($_ -match 'Read') { 'moderate' }
+                                               else { 'low' }
+                                    
+                                    $tooltip = switch ($permClass) {
+                                        'critical' { "CRITICAL RISK: Full administrative access - Requires immediate security review" }
+                                        'high' { "HIGH RISK: Write/modify permissions - Can make system changes" }
+                                        'elevated' { "ELEVATED RISK: Combined read-write access - Extended privileges" }
+                                        'moderate' { "MODERATE RISK: Read-only access - Limited data exposure" }
+                                        'low' { "LOW RISK: Basic access - Minimal security impact" }
+                                    }
+                                    
+                                    $icon = switch ($permClass) {
+                                        'critical' { 'fa-user-shield' }
+                                        'high' { 'fa-pen-fancy' }
+                                        'elevated' { 'fa-edit' }
+                                        'moderate' { 'fa-eye' }
+                                        'low' { 'fa-info-circle' }
+                                    }
+                                    
+                                    "<div class='permission-item $permClass' data-tooltip='$tooltip'><i class='fas $icon'></i>$([System.Web.HttpUtility]::HtmlEncode($_.Trim()))</div>"
+                                }) -join ""
+                            })
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class='permission-type'>Delegated Permissions:</div>
-            <div class='permission-list'>
-                $(if ([string]::IsNullOrWhiteSpace($row.DelegatedPermissions)) { 
-                    "<span class='permission-tag none-permission'>None</span>" 
-                } else { 
-                    Format-Permissions $row.DelegatedPermissions 
-                })
-            </div>
-        </div>
 "@
-
-
-
-    # Append HTML content for each app
-    $script:htmlContent += $htmlAppContent
 }
-
-# Add JavaScript functionality to enable filtering and export
 $script:htmlContent += @"
+        </div>
+    </div>
     <script>
-        const csvData = $($csvData | ConvertTo-Json);
+        // Debug function to help troubleshoot filtering
+        function debugElement(element, attribute) {
+            if (attribute) {
+                console.log('Debug ' + attribute + ':', element ? element.getAttribute(attribute) : 'Element not found');
+            } else {
+                console.log('Debug element:', element ? element.textContent : 'Element not found');
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
+            const appNameFilter = document.getElementById('appNameFilter');
             const riskScoreFilter = document.getElementById('riskScoreFilter');
-            const expiryFilter = document.getElementById('expiryFilter');
-            const daysFilter = document.getElementById('daysFilter');
-            const apps = document.querySelectorAll('.app');
+            const appTypeFilter = document.getElementById('appTypeFilter');
+            const expiryStatusFilter = document.getElementById('expiryStatusFilter');
+            const filterStats = document.querySelector('.filter-stats');
+            const appCards = document.querySelectorAll('.app-card');
 
-            function filterApps() {
-                const selectedRiskScore = parseInt(riskScoreFilter.value);
-                const selectedExpiry = expiryFilter.value;
-                const selectedDays = parseInt(daysFilter.value);
+            function filterCards() {
+                console.log('Filtering started...');
+                const searchTerm = appNameFilter.value.toLowerCase();
+                const riskLevel = riskScoreFilter.value;
+                const appType = appTypeFilter.value;
+                const expiryStatus = expiryStatusFilter.value;
 
-                apps.forEach(app => {
-                    const riskScore = parseInt(app.dataset.riskscore);
-                    const expiryStatus = app.dataset.expirystatus;
-                    const daysUntilExpiry = parseInt(app.dataset.daysuntilexpiry);
-                    
-                    let showApp = true;
+                let visibleCount = 0;
 
-                    // Risk Score Filter
-                    if (selectedRiskScore > 0 && riskScore < selectedRiskScore) {
-                        showApp = false;
+                appCards.forEach(card => {
+                    // Debug logging
+                    console.log('Processing card:', card);
+                    debugElement(card.querySelector('.app-name'));
+                    debugElement(card, 'data-riskscore');
+                    debugElement(card, 'data-apptype');
+                    debugElement(card, 'data-expirystatus');
+
+                    const appName = card.querySelector('.app-name').textContent.toLowerCase();
+                    const riskScore = parseInt(card.getAttribute('data-riskscore'));
+                    const cardType = card.getAttribute('data-apptype');
+                    const cardExpiry = card.getAttribute('data-expirystatus');
+
+                    const matchesSearch = appName.includes(searchTerm);
+                    const matchesRisk = riskLevel === 'all' || 
+                        (riskLevel === 'critical' && riskScore >= 8) ||
+                        (riskLevel === 'high' && riskScore >= 6 && riskScore < 8) ||
+                        (riskLevel === 'medium' && riskScore >= 4 && riskScore < 6) ||
+                        (riskLevel === 'low' && riskScore < 4);
+                    const matchesType = appType === 'all' || cardType === appType;
+                    const matchesExpiry = expiryStatus === 'all' || cardExpiry === expiryStatus;
+
+                    // Debug logging
+                    console.log({
+                        appName: appName,
+                        riskScore: riskScore,
+                        cardType: cardType,
+                        cardExpiry: cardExpiry,
+                        matchesSearch: matchesSearch,
+                        matchesRisk: matchesRisk,
+                        matchesType: matchesType,
+                        matchesExpiry: matchesExpiry
+                    });
+
+                    if (matchesSearch && matchesRisk && matchesType && matchesExpiry) {
+                        card.style.display = 'flex';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
                     }
-
-                    // Expiry Status Filter
-                    if (selectedExpiry !== 'all') {
-                        switch(selectedExpiry) {
-                            case 'expired':
-                                if (expiryStatus !== 'Expired') showApp = false;
-                                break;
-                            case 'expiring':
-                                if (expiryStatus !== 'Expiring Soon') showApp = false;
-                                break;
-                            case 'valid':
-                                if (expiryStatus !== 'Valid') showApp = false;
-                                break;
-                            case 'none':
-                                if (expiryStatus !== 'No Expiration') showApp = false;
-                                break;
-                        }
-                    }
-
-                    // Days Until Expiry Filter
-                    if (selectedDays && !isNaN(selectedDays)) {
-                        if (isNaN(daysUntilExpiry) || daysUntilExpiry > selectedDays || daysUntilExpiry < 0) {
-                            showApp = false;
-                        }
-                    }
-
-                    app.style.display = showApp ? 'block' : 'none';
                 });
+
+                filterStats.textContent = 'Showing ' + visibleCount + ' of ' + appCards.length + ' applications';
             }
 
-            // Add event listeners to filters
-            riskScoreFilter.addEventListener('change', filterApps);
-            expiryFilter.addEventListener('change', filterApps);
-            daysFilter.addEventListener('change', filterApps);
+            // Add event listeners
+            appNameFilter.addEventListener('input', filterCards);
+            riskScoreFilter.addEventListener('change', filterCards);
+            appTypeFilter.addEventListener('change', filterCards);
+            expiryStatusFilter.addEventListener('change', filterCards);
+
+            // Initial filter
+            console.log('Initial filter running...');
+            filterCards();
         });
-
-        function exportToCSV() {
-            const apps = document.getElementsByClassName('app');
-            const visibleApps = Array.from(apps).filter(app => app.style.display !== 'none');
-            
-            if (visibleApps.length === 0) {
-                alert('No visible applications to export.');
-                return;
-            }
-
-            const csvData = visibleApps.map(app => {
-                return {
-                    'Display Name': app.querySelector('.app-name').textContent,
-                    'App Type': app.querySelector('.app-type').textContent.replace('App Type: ', ''),
-                    'Application ID': app.querySelector('.app-id').textContent.replace('Application ID: ', ''),
-                    'Object ID': app.querySelector('.object-id').textContent.replace('Object ID: ', ''),
-                    'Created': app.querySelector('.app-dates').textContent.split('|')[0].replace('Created: ', '').trim(),
-                    'Latest Credential Expiration': app.querySelector('.app-dates').textContent.split('|')[1].replace('Latest Credential Expiration: ', '').trim(),
-                    'Sign-in Audience': Array.from(app.querySelectorAll('.app-details div')).find(el => el.textContent.startsWith('Sign-in Audience'))?.textContent.replace('Sign-in Audience: ', '') || '',
-                    'Verified Publisher': Array.from(app.querySelectorAll('.app-details div')).find(el => el.textContent.startsWith('Verified Publisher'))?.textContent.replace('Verified Publisher: ', '') || '',
-                    'Password Credentials Count': Array.from(app.querySelectorAll('.app-details div')).find(el => el.textContent.startsWith('Password Credentials Count'))?.textContent.replace('Password Credentials Count: ', '') || '',
-                    'Owners': Array.from(app.querySelectorAll('.app-details div')).find(el => el.textContent.startsWith('Owners'))?.textContent.replace('Owners: ', '') || '',
-                    'Risk Score': Array.from(app.querySelectorAll('.app-details div')).find(el => el.textContent.startsWith('Risk Score'))?.textContent.replace('Risk Score: ', '').split('/')[0].trim() || '',
-                    'Application Permissions': Array.from(app.querySelectorAll('.permission-list')[0].querySelectorAll('.permission-tag')).map(tag => tag.textContent).join('; '),
-                    'Delegated Permissions': Array.from(app.querySelectorAll('.permission-list')[1].querySelectorAll('.permission-tag')).map(tag => tag.textContent).join('; ')
-                };
-            });
-
-            const headers = Object.keys(csvData[0]);
-            const csvContent = [
-                headers.join(','),
-                ...csvData.map(row => headers.map(header => {
-                    let value = row[header] || '';
-                    if (typeof value === 'string') {
-                        value = value.replace(/"/g, '""');
-                        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-                            value = `"${value}"`;
-                        }
-                    }
-                    return value;
-                }).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'ApplicationsEnterpriseAppsReport.csv';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
     </script>
 </body>
 </html>
 "@
+{{ ... }}
 
 # --------------------------------------------
 # 9. Save and Open HTML Report
@@ -1127,8 +1421,20 @@ $script:htmlContent += @"
 $reportPath = Join-Path $PWD.Path "ApplicationsEnterpriseAppsReport.html"
 $script:htmlContent | Out-File -FilePath $reportPath -Encoding UTF8
 
-Write-Host "📝 HTML Report has been generated and saved as ApplicationsEnterpriseAppsReport.html" -ForegroundColor Green
-Start-Process $reportPath  # Open the HTML report
+Write-Host "✨ Report generation completed!" -ForegroundColor Green
+Write-Host "📊 Total applications processed: $($csvData.Count)" -ForegroundColor Cyan
+Write-Host "📝 Report saved as: $reportPath" -ForegroundColor Yellow
+
+# Open the report in the default browser
+try {
+    Write-Host "🌐 Opening report in your default browser..." -ForegroundColor Cyan
+    Start-Process $reportPath
+    Write-Host "✅ Report opened successfully!" -ForegroundColor Green
+} catch {
+    Write-Host "⚠️ Could not automatically open the report. Please open it manually from: $reportPath" -ForegroundColor Yellow
+}
+
+Write-Host "`n💡 Tip: Use the filters at the top of the report to analyze your applications!" -ForegroundColor Magenta
 
 # --------------------------------------------
 # End of Script
