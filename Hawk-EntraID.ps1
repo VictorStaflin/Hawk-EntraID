@@ -1,6 +1,6 @@
 <#
 AUTHOR
-Victor Staflin @TrueSec
+Victor Staflin
 
 .DESCRIPTION
 This script uses the Microsoft Graph PowerShell SDK to retrieve information about custom applications
@@ -81,85 +81,9 @@ function Is-BuiltInMicrosoftApp($app) {
     }
 
     # List of known built-in Microsoft apps
+     # List of built-in Microsoft apps and patterns
     $builtInApps = @(
-        'Microsoft Flow Service', 'Microsoft Teams AadSync', 'Azure Information Protection', 
-        'SalesInsightsWebApp', 'Teams NRT DLP Ingestion Service', 'WindowsUpdate-Service',
-        'Office 365 SharePoint Online', 'Office 365 Information Protection', 'AAD App Management',
-        'Skype for Business Online', 'Skype Teams Firehose', 'Microsoft Defender for Cloud Apps MIP Server',
-        'Microsoft password reset service', 'Power BI Premium', 'Teams CMD Services and Data',
-        'Microsoft Exchange Online Protection', 'IAMTenantCrawler', 'ComplianceWorkbenchApp',
-        'Skype and Teams Tenant Admin API', 'Microsoft Teams User Profile Search Service', 
-        'Universal Print', 'Microsoft Azure AD Identity Protection', 'SharePoint Online Web Client Extensibility',
-        'Microsoft Alchemy Service', 'Radius Aad Syncer', 'MsgDataMgmt', 'O365 Secure Score', 
-        'Microsoft Intune', 'ZTNA Network Access Control Plane', 'IC3 Long Running Operations Service',
-        'Microsoft Rights Management Services', 'Azure AD Identity Governance - Entitlement Management',
-        'Data Classification Service', 'Office365 Shell WCSS-Server Default', 'AADReporting',
-        'Azure AD Notification', 'Windows Update for Business Deployment Service', 'Microsoft To-Do',
-        'Microsoft Azure Workflow', 'Microsoft Graph', 'ProjectWorkManagement', 'Microsoft Teams UIS',
-        'Microsoft Teams - Teams And Channels Service', 'Bing', 'OneProfile Service', 'AAD Terms Of Use',
-        'Azure Multi-Factor Auth Connector', 'Viva Engage', 'OfficeServicesManager', 
-        'Office MRO Device Manager Service', 'PowerApps Service', 'Microsoft Information Protection Sync Service',
-        'Microsoft Cloud App Security', 'Office365 Shell SS-Server Default', 'Cortana Runtime Service',
-        'Azure Resource Graph', 'Microsoft Threat Protection', 'AAD Request Verification Service - PROD',
-        'PPE-DataResidencyService', 'CPIM Service', 'SharePoint Online Web Client Extensibility Isolated',
-        'PushChannel', 'Microsoft Teams Chat Aggregator', 'Lifecycle Workflows', 'Microsoft Intune Service Discovery',
-        'Skype for Business', 'MS-PIM', 'Centralized Deployment', 'SharePoint Home Notifier', 
-        'Office 365 Enterprise Insights', 'Azure AD Application Proxy', 'Office365DirectorySynchronizationService',
-        'MIP Exchange Solutions - Teams', 'Signup', 'Microsoft Office 365 Portal', 'OneNote', 
-        'Narada Notification Service', 'Office 365 Configure', 'Dynamics Lifecycle services', 
-        'Azure AD Identity Protection', 'Media Analysis and Transformation Service', 'PowerApps-Advisor',
-        'OMSAuthorizationServicePROD', 'OfficeClientService', 'Microsoft SharePoint Online - SharePoint Home', 
-        'Cortana at Work Service', 'Microsoft.Azure.SyncFabric', 'Microsoft Teams Services', 'Microsoft Teams Graph Service',
-        'Power BI Service', 'Common Data Service License Management', 'SharePoint Framework Azure AD Helper', 
-        'CAP Neptune Prod CM Prod', 'Audit GraphAPI Application', 'Microsoft People Cards Service', 
-        'AzureSupportCenter', 'Microsoft Insider Risk Management', 'Microsoft B2B Admin Worker',
-        'Office 365 Management APIs', 'Microsoft_Azure_Support', 'Office Shredding Service', 
-        'Request Approvals Read Platform', 'Microsoft Azure Signup Portal', 'My Apps', 
-        'Conference Auto Attendant', 'Microsoft Graph Change Tracking', 'Office365 Zoom', 
-        'MS Teams Griffin Assistant', 'Customer Experience Platform PROD', 'CompliancePolicy',
-        'Messaging Bot API Application', 'Microsoft Modern Contact Master', 'DeploymentScheduler', 
-        'Sway', 'ZTNA Policy Service Graph Client', 'M365 Label Analytics', 'Virtual Visits App', 
-        'API Connectors 1st Party', 'Connectors', 'Skype Presence Service', 'Microsoft Intune SCCM Connector', 
-        'IPSubstrate', 'Azure Portal', 'Microsoft Mobile Application Management', 'Microsoft Service Trust', 
-        'M365 Compliance Drive', 'Portfolios', 'Microsoft Flow CDS Integration Service', 
-        'MIP Exchange Solutions - ODB', 'Skype Core Calling Service', 'Microsoft Partner Center', 
-        'OCaaS Experience Management Service', 'Microsoft App Access Panel', 'Microsoft Teams AuditService', 
-        'Microsoft Device Management Checkin', 'OCaaS Worker Services', 'Azure Advanced Threat Protection', 
-        'Microsoft Intune API', 'Internet resources with Global Secure Access', 'Microsoft Graph Connectors Core',
-        'Windows 365', 'o365.servicecommunications.microsoft.com', 'Policy Administration Service', 
-        'Microsoft Forms', 'Intune CMDeviceService', 'Azure MFA StrongAuthenticationService', 
-        'SharePoint Notification Service', 'Azure Credential Configuration Endpoint Service', 
-        'Intune Grouping and Targeting Client Prod', 'Microsoft Approval Management', 
-        'Microsoft Substrate Management', 'Azure ESTS Service', 'Skype Teams Calling API Service', 
-        'Microsoft Office Licensing Service Agents', 'Azure Multi-Factor Auth Client', 
-        'Microsoft Intune Advanced Threat Protection Integration', 'Microsoft Information Protection API', 
-        'Dynamics 365 Viva Sales', 'Microsoft Teams AuthSvc', 'Azure Purview', 
-        'Microsoft Windows AutoPilot Service API', 'Microsoft.SMIT', 'Substrate-FileWatcher', 
-        'Yggdrasil', 'Office 365 Exchange Online', 'Microsoft Teams ATP Service', 
-        'People Profile Event Proxy', 'Microsoft 365 Security and Compliance Center', 
-        'IDML Graph Resolver Service and CAD', 'Windows Azure Active Directory', 
-        'Device Registration Service', 'Microsoft Office Licensing Service vNext', 
-        'MIP Exchange Solutions', 'IpLicensingService', 'Microsoft apps with Global Secure Access', 
-        'Office 365 Search Service', 'Microsoft AppPlat EMA', 'Microsoft Invitation Acceptance Portal', 
-        'Dynamics Data Integration', 'Customer Service Trial PVA', 'O365 Demeter', 
-        'WindowsDefenderATP', 'Customer Service Trial PVA - readonly', 'Microsoft Device Management EMM API',
-        'MCAPI Authorization Prod', 'MIP Exchange Solutions - SPO', 'Windows Azure Service Management API', 
-        'M365 License Manager', 'Teams NRT DLP Service', 'Microsoft O365 Scuba', 
-        'Meeting Migration Service', 'IAM Supportability', 'MicrosoftEndpointDLP', 'M365 Admin Services', 
-        'Graph Connector Service', 'Configuration Manager Microservice', 'Power Platform Environment Discovery Service', 
-        'Exchange Rbac', 'SPAuthEvent', 'Conferencing Virtual Assistant', 'Dataverse', 
-        'OCaaS Client Interaction Service', 'Teams EHR Connector', 'All private resources with Global Secure Access', 
-        'Substrate Instant Revocation Pipeline', 'Windows Store for Business', 'Linkedin', 'BrowserStack'
-    )
-
-
-    # Check if the app name is in our known list
-    if ($builtInApps -contains $app.DisplayName) {
-        return $true
-    }
-
-    # Check for common Microsoft app patterns
-    $microsoftPatterns = @(
+        # Regex patterns for standard Microsoft apps
         '^Microsoft',
         '^MS\s',
         '^Office\s',
@@ -169,45 +93,49 @@ function Is-BuiltInMicrosoftApp($app) {
         '^Teams\s',
         '^Dynamics\s',
         '^Power\s',
-        '^Graph\s',
-        'Microsoft$',
-        '\sOnline$',
-        'Azure$',
-        '^AAD\s',
-        'Intune$',
-        'Exchange$',
-        'Outlook$',
-        'Skype$',
-        'Yammer$',
-        'Defender$',
-        'PowerBI$',
-        'PowerApps$',
-        'Flow$',
-        'Substrate',
-        'Cortana',
-        'CPIM Service',
-        'Workflow',
-        'MIP',
-        'Fabric',
-        'Compliance',
-        'Universal Print',
-        'Bing',
-        'OneDrive',
-        'OneNote',
-        'Sway',
-        'Viva',
-        'M365',
-        'GSA-$',
-        'Linkedin',
+        '^Skype\s',
+        '^MIP\s',
+        '^OCaaS\s',
+        '^Intune\s',
+        '^Viva\s',
+        '^Substrate',
+        
+        # Exact matches for non-standard names
+        'AAD App Management',
+        'IPSubstrate',
         'Box',
-        'Salesforce'
+        'PushChannel',
+        'Bing',
+        'OMSAuthorizationServicePROD',
+        'OfficeServicesManager',
+        'WindowsDefenderATP',
+        'My Apps',
+        'MCAPI Authorization Prod',
+        'Exchange Rbac',
+        'ComplianceAuthServer',
+        'CAP Neptune Prod CM Prod',
+        'ProjectWorkManagement',
+        'Dataverse',
+        'DeploymentScheduler',
+        'IAMTenantCrawler',
+        'IpLicensingService',
+        'ProvisioningHealth',
+        'Connectors',
+        'EXO_App2025',
+        'Portfolios',
+        'Sway',
+        'ComplianceWorkbenchApp',
+        'AADReporting',
+        'Signup',
+        'SPAuthEvent',
+        'Linkedin'
     )
 
-    foreach ($pattern in $microsoftPatterns) {
-        if ($app.DisplayName -match $pattern) {
-            return $true
-        }
+    # Check if the app name matches any pattern or exact name
+    if ($builtInApps | Where-Object { $app.DisplayName -match $_ }) {
+        return $true
     }
+
 
     # Check publisher domain if available
     if ($app.PublisherDomain -like "*.microsoft.com") {
@@ -423,7 +351,31 @@ function Calculate-RiskScore($appRoles, $delegatedPermissions) {
     return [Math]::Min(10, [Math]::Round($totalRiskScore))
 }
 
+function Format-Permission($permission) {
+    # Determine if this is a ReadWrite permission
+    $isReadWrite = $permission -match 'ReadWrite'
+    
+    # Set the class based on permission type
+    $permissionClass = if ($isReadWrite) {
+        'permission-text readwrite'
+    } else {
+        'permission-text'
+    }
 
+    # Determine icon based on permission type
+    $icon = if ($isReadWrite) {
+        '<i class="fas fa-pen"></i>' # Pen icon for write permissions
+    } else {
+        '<i class="fas fa-eye"></i>' # Eye icon for read-only
+    }
+
+    "<div class='permission-item'>
+        $icon
+        <div class='$permissionClass'>
+            <span class='graph-prefix'>Microsoft Graph - </span>$permission
+        </div>
+    </div>"
+}
 
 # --------------------------------------------
 # 4. Retrieve Applications and Enterprise Apps
@@ -487,7 +439,7 @@ if ($filteredApps.Count -eq 0) {
                 DelegatedPermissions = $delegatedPermissionsString
                 RiskScore = [Math]::Min(10, $riskScore)  # Cap at 10
                 DaysUntilExpiry = $daysUntilExpiry
-                ExpiryStatus = if ($null -eq $daysUntilExpiry) { "No Expiration" } elseif ($daysUntilExpiry -lt 0) { "Expired" } elseif ($daysUntilExpiry -le 30) { "Expiring Soon" } else { "Valid" }
+                ExpiryStatus = if ($null -eq $daysUntilExpiry) { "High Risk" } elseif ($daysUntilExpiry -lt 0) { "Critical" } elseif ($daysUntilExpiry -le 30) { "Warning" } else { "Valid" }
             }
         }
     }
@@ -575,19 +527,7 @@ $script:htmlContent = @"
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
-        /* Core Layout Styles */
-        :root {
-            --primary-color: #2563eb;
-            --secondary-color: #f8fafc;
-            --success-color: #22c55e;
-            --warning-color: #f59e0b;
-            --danger-color: #ef4444;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --border-color: #e2e8f0;
-            --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-        }
-
+        /* Reset and Base Styles */
         * {
             margin: 0;
             padding: 0;
@@ -595,557 +535,1100 @@ $script:htmlContent = @"
         }
 
         body {
+            background: linear-gradient(145deg, #0f172a, #1e293b);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            line-height: 1.5;
-            color: var(--text-primary);
-            background-color: #f1f5f9;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding: 24px;
         }
 
+        /* Container */
         .container {
-            width: 100%;
-            max-width: 1400px;
+            max-width: 100%;
             margin: 0 auto;
-            padding: 1.5rem;
+            padding: 16px;
         }
 
-        .header {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--card-shadow);
+        /* Header Section */
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 20px;
         }
 
-        .header-top {
+        /* Filter Controls */
+        .filter-controls {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
             align-items: center;
-            margin-bottom: 1.5rem;
         }
 
+        /* Filter Inputs - Dark Mode Optimized */
+        input[type="text"],
+        select {
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+            min-width: 200px;
+            max-width: 300px;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Dark mode select options */
+        select option {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        /* Export Button */
         .export-button {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.25rem;
-            background-color: var(--primary-color);
-            color: white;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: #ffffff;
             border: none;
-            border-radius: 0.5rem;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.875rem;
-            text-decoration: none;
+            transition: all 0.2s ease;
+            margin-bottom: 18px;
         }
 
         .export-button:hover {
-            background-color: #1d4ed8;
-            transform: translateY(-1px);
-        }
-
-        .export-button:active {
-            transform: translateY(0);
+            background: #2563eb;
         }
 
         .export-button i {
-            font-size: 1rem;
+            font-size: 14px;
         }
 
+        /* Filter Stats */
+        .filter-stats {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 16px;
+        }
+
+        /* Apps Grid - Responsive Layout */
         .apps-grid {
             display: grid;
-            gap: 1.5rem;
+            gap: 16px;
             grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
-            margin-top: 2rem;
-        }
-
-        .app-card {
-            display: flex !important;
-            flex-direction: column;
-            background-color: white;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-            gap: 1rem;
-        }
-
-        .app-card[style*="display: none"] {
-            display: none !important;
-        }
-
-        .app-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            background-color: var(--secondary-color);
-        }
-
-        .app-name {
-            font-size: clamp(1rem, 1.5vw, 1.125rem);
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.75rem;
-            word-break: break-word;
-            display: flex;
-            align-items: center;
-        }
-
-        .app-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .app-body {
-            padding: 1.5rem;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .detail-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            padding: 1rem;
-            background-color: var(--secondary-color);
-            border-radius: 0.5rem;
-        }
-
-        .detail-label {
-            font-weight: 500;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .detail-value {
-            font-weight: 500;
-            color: var(--text-primary);
-            word-break: break-word;
-        }
-
-        .permissions-section {
-            margin-top: auto;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .permissions-title {
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-        }
-
-        .permissions-list {
-            background-color: var(--secondary-color);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .app-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 2rem;
-            height: 2rem;
-            border-radius: 0.5rem;
-            background-color: var(--primary-color);
-            color: white;
-            margin-right: 0.75rem;
-        }
-
-        .app-icon i {
-            font-size: 1rem;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.375rem;
-            padding: 0.375rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .status-badge.expired {
-            background-color: #fee2e2;
-            color: #991b1b;
-        }
-
-        .status-badge.warning {
-            background-color: #fef3c7;
-            color: #92400e;
-        }
-
-        .status-badge.valid {
-            background-color: #dcfce7;
-            color: #166534;
-        }
-
-        .status-badge.no-expiry {
-            background-color: #e0f2fe;
-            color: #0369a1;
+            width: 100%;
         }
 
         /* Responsive Design */
+        @media (max-width: 1400px) {
+            .apps-grid {
+                grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .apps-grid {
+                grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+            }
+        }
+
         @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
             }
 
-            .header {
-                padding: 1.5rem;
+            input[type="text"],
+            select {
+                min-width: 100%;
+                max-width: 100%;
             }
 
             .apps-grid {
                 grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .app-card {
-                border-radius: 0.75rem;
-            }
-
-            .app-header, .app-body {
-                padding: 1rem;
-            }
-
-            .detail-item {
-                padding: 0.75rem;
-            }
-
-            .permissions-section {
-                padding-top: 1rem;
             }
         }
 
-        /* Dark mode support */
+        /* Dark Mode Optimization */
         @media (prefers-color-scheme: dark) {
-            body {
-                background-color: #0f172a;
-                color: #f8fafc;
-            }
-
-            .header, .app-card {
-                background-color: #1e293b;
-            }
-
-            .detail-item, .permissions-list {
-                background-color: #334155;
-            }
-
-            select, input {
-                background-color: #334155;
-                color: #f8fafc;
-                border-color: #475569;
-            }
-
-            .app-header {
-                background-color: #1e293b;
-                border-color: #475569;
+            input[type="text"],
+            select {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.1);
             }
         }
 
-        /* Security Enhancements - Keep these at the end to override base styles */
-        [data-tooltip] {
+        /* Apps Grid */
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        /* App Card */
+        .app-card {
+            background: #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Card Header */
+        .app-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            gap: 12px;
+            position: relative; /* For tooltip positioning */
+        }
+
+        /* App Icon */
+        .app-icon {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        /* App Name Container */
+        .app-name {
+            flex: 1;
+            font-size: 14px;
+            color: #f1f5f9;
             position: relative;
-            cursor: help;
+            cursor: default; /* Shows it's hoverable */
         }
 
-        [data-tooltip]:before {
-            content: attr(data-tooltip);
+        /* Truncated Text */
+        .app-name-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px; /* Adjust based on your layout */
+        }
+
+        /* Tooltip on Hover */
+        .app-name:hover .app-name-tooltip {
+            display: block;
+        }
+
+        .app-name-tooltip {
+            display: none;
             position: absolute;
             bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
+            background: #1e293b;
             padding: 8px 12px;
-            background-color: #1e293b;
-            color: white;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            white-space: normal;
-            max-width: 300px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s;
-            z-index: 1000;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            pointer-events: none;
+            margin-bottom: 8px;
         }
 
-        [data-tooltip]:hover:before {
-            opacity: 1;
-            visibility: visible;
-            bottom: calc(100% + 5px);
+        /* Arrow for tooltip */
+        .app-name-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 20px;
+            border: 6px solid transparent;
+            border-top-color: #1e293b;
         }
 
-        .risk-score {
+        /* Badges */
+        .risk-score,
+        .validity-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-weight: 600;
-        }
-
-        .risk-score.critical {
-            background-color: #dc2626 !important;
-            color: white !important;
-        }
-
-        .risk-score.high {
-            background-color: #ef4444 !important;
-            color: white !important;
-        }
-
-        .risk-score.medium {
-            background-color: #f97316 !important;
-            color: white !important;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            gap: 4px;
         }
 
         .risk-score.low {
-            background-color: #22c55e !important;
-            color: white !important;
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
         }
 
-        .permission-item {
-            margin: 4px 0;
-            padding: 8px 12px;
+        .risk-score.high {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .validity-badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        /* Card Details */
+        .detail-item {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .badge-container {
+                flex-direction: column;
+            }
+        }
+
+        /* Permission Tags Layout */
+        .permission-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            margin: 2px;
             border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            gap: 4px;
+        }
+
+        /* Read/Write Permission Colors */
+        .permission-tag.read {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        .permission-tag.write {
+            background: rgba(234, 179, 8, 0.15);
+            color: #eab308;
+        }
+
+        .permission-tag.critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .permission-tag.none-permission {
+            background: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+        }
+
+        /* Risk Score Colors */
+        .risk-score {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            gap: 4px;
+        }
+
+        .risk-score.critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .risk-score.high {
+            background: rgba(234, 179, 8, 0.15);
+            color: #eab308;
+        }
+
+        .risk-score.medium {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        .risk-score.low {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        /* Permissions Section */
+        .permissions-section {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .permissions-title {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .permissions-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        /* Icon styles for permissions */
+        .permission-tag i {
+            font-size: 10px;
+        }
+
+        .permission-tag.write i,
+        .permission-tag.critical i {
+            color: currentColor;
+        }
+
+        /* Permission Item Styling */
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+
+        .permission-item i {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 2px;
+        }
+
+        .permission-text {
+            color: #e2e8f0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .permission-text.readwrite {
+            color: #ef4444; /* Bright red for ReadWrite permissions */
+        }
+
+        .graph-prefix {
+            color: #94a3b8 !important; /* Always gray, even in ReadWrite permissions */
+        }
+
+        /* Permission Highlights */
+        .permission-highlight {
+            color: #ef4444; /* Red for high-privilege permissions */
+            font-weight: 500;
+        }
+
+        /* Section Headers */
+        .permissions-header {
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 500;
+            margin: 16px 0 8px;
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .permissions-header i {
+            font-size: 14px;
+        }
+
+        /* Permission Categories */
+        .application-permissions,
+        .delegated-permissions {
+            margin-bottom: 16px;
+        }
+
+        /* App Icon Variations based on type */
+        .app-icon i {
+            font-size: 18px;
+            color: #ffffff;
+        }
+
+        /* Different icons for different app types */
+        .app-icon.enterprise i {
+            color: #3b82f6; /* Blue for enterprise apps */
+        }
+
+        .app-icon.service-principal i {
+            color: #8b5cf6; /* Purple for service principals */
+        }
+
+        .app-icon.managed i {
+            color: #10b981; /* Green for managed apps */
+        }
+
+        /* Sort Filter Styling */
+        #sortFilter {
+            min-width: 200px;
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #sortFilter:hover {
+            border-color: #3b82f6;
+        }
+
+        #sortFilter option {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 8px;
+        }
+
+        /* Info Button */
+        .info-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 18px;
+        }
+
+        .info-button:hover {
+            background: #2563eb;
+        }
+
+        .info-button i {
+            font-size: 14px;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .info-panel.active {
+            display: flex;
+        }
+
+        .info-content {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow: auto;
+            position: relative;
+        }
+
+        .info-section {
+            margin-bottom: 24px;
+        }
+
+        .info-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+
+        .info-section ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        .info-section li {
+            margin-bottom: 4px;
+        }
+
+        .permissions-info {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .permissions-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+
+        .permissions-info ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        .permissions-info li {
+            margin-bottom: 4px;
+        }
+
+        /* Updated Navbar Styles */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            margin-bottom: 24px;
+        }
+
+        .navbar-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Info Button */
+        .info-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #475569;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .permission-item.critical {
-            background-color: #fee2e2 !important;
-            color: #991b1b !important;
-            border-left: 4px solid #dc2626;
+        .info-button:hover {
+            background: #334155;
         }
-
-        .permission-item.high {
-            background-color: #fef2f2 !important;
-            color: #991b1b !important;
-            border-left: 4px solid #ef4444;
+        .detail-item .fa-layer-group {
+            color: #ffffff;
         }
-
-        .permission-item.elevated {
-            background-color: #faf5ff !important;
-            color: #6b21a8 !important;
-            border-left: 4px solid #9333ea;
-        }
-
-        .permission-item.moderate {
-            background-color: #eff6ff !important;
-            color: #1e40af !important;
-            border-left: 4px solid #3b82f6;
-        }
-
-        .permission-item.low {
-            background-color: #f0fdf4 !important;
-            color: #166534 !important;
-            border-left: 4px solid #22c55e;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .permission-item.critical {
-                background-color: rgba(220, 38, 38, 0.1) !important;
-                color: #fca5a5 !important;
-            }
-
-            .permission-item.high {
-                background-color: rgba(239, 68, 68, 0.1) !important;
-                color: #fca5a5 !important;
-            }
-
-            .permission-item.elevated {
-                background-color: rgba(147, 51, 234, 0.1) !important;
-                color: #e9d5ff !important;
-            }
-
-            .permission-item.moderate {
-                background-color: rgba(59, 130, 246, 0.1) !important;
-                color: #bfdbfe !important;
-            }
-
-            .permission-item.low {
-                background-color: rgba(34, 197, 94, 0.1) !important;
-                color: #86efac !important;
-            }
-
-            [data-tooltip]:before {
-                background-color: #0f172a;
-                border: 1px solid #334155;
-            }
-        }
-        
-        .filter-stats {
-            margin-top: 1rem;
-            padding: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            text-align: right;
-            border-top: 1px solid var(--border-color);
-        }
-        
-        .filters {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            background-color: white;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: var(--card-shadow);
-            margin-top: 1rem;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .filter-group label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        .filter-group input,
-        .filter-group select {
+        /* Info Panel */
+        .info-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            right: 0;
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            background-color: white;
-            transition: all 0.2s;
-            outline: none;
+            max-width: 600px;
+            height: 100vh;
+            background: #1e293b;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            overflow-y: auto;
         }
 
-        .filter-group input:focus,
-        .filter-group select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        .info-panel.active {
+            display: block;
         }
 
-        .filter-group input::placeholder {
-            color: var(--text-secondary);
-            opacity: 0.7;
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
         }
 
-        .filter-group select {
+        .close-button {
+            background: none;
+            border: none;
+            color: #94a3b8;
             cursor: pointer;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
+            font-size: 20px;
+            padding: 4px;
         }
 
-        .filter-stats {
-            grid-column: 1 / -1;
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid var(--border-color);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            text-align: right;
+        .close-button:hover {
+            color: #f1f5f9;
         }
 
-        @media (max-width: 768px) {
-            .filters {
-                grid-template-columns: 1fr;
-                padding: 1rem;
-            }
+        /* Rest of your existing styles ... */
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .filters {
-                background-color: var(--dark-card-bg);
-            }
+        .modal-content {
+            position: relative;
+            background: #1e293b;
+            margin: 2% auto;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
 
-            .filter-group input,
-            .filter-group select {
-                background-color: var(--dark-card-bg);
-                border-color: var(--dark-border-color);
-                color: var(--dark-text-primary);
-            }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
 
-            .filter-group input::placeholder {
-                color: var(--dark-text-secondary);
-            }
+        .modal-header h2 {
+            color: #f1f5f9;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-            .filter-group select {
-                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            }
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: calc(90vh - 80px);
+        }
 
-            .filter-stats {
-                border-color: var(--dark-border-color);
-                color: var(--dark-text-secondary);
-            }
+        .close-button {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .close-button:hover {
+            color: #f1f5f9;
+        }
+
+        /* Info Section Styles */
+        .info-section {
+            margin-bottom: 32px;
+        }
+
+        .info-section h3 {
+            color: #f1f5f9;
+            font-size: 1.25rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section ul {
+            list-style: none;
+            padding-left: 8px;
+        }
+
+        .info-section ul li {
+            margin-bottom: 12px;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .info-section ul li strong {
+            color: #f1f5f9;
+        }
+
+        .info-section ul ul {
+            margin-top: 8px;
+            margin-left: 20px;
+            border-left: 2px solid #334155;
+            padding-left: 16px;
+        }
+
+        /* Risk Categories */
+        .risk-category {
+            margin-bottom: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .risk-category h4 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .risk-category.critical {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .risk-category.high {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .risk-category.medium {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .risk-category.low {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .risk-category.critical h4 { color: #ef4444; }
+        .risk-category.high h4 { color: #f59e0b; }
+        .risk-category.medium h4 { color: #3b82f6; }
+        .risk-category.low h4 { color: #10b981; }
+
+        /* Methodology Styles */
+        .methodology-content {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .methodology-category {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .methodology-category h4 {
+            color: #f1f5f9;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scoring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
+
+        .scoring-table th,
+        .scoring-table td {
+            padding: 12px;
+            border: 1px solid #334155;
+            text-align: left;
+        }
+
+        .scoring-table th {
+            background: #1e293b;
+            color: #f1f5f9;
+        }
+
+        .scoring-table tr.critical td { background: rgba(239, 68, 68, 0.1); }
+        .scoring-table tr.high td { background: rgba(245, 158, 11, 0.1); }
+        .scoring-table tr.medium td { background: rgba(59, 130, 246, 0.1); }
+        .scoring-table tr.low td { background: rgba(16, 185, 129, 0.1); }
+
+        .methodology-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+
+        .methodology-note i {
+            color: #3b82f6;
+            font-size: 1.2rem;
+            margin-top: 3px;
+        }
+
+        .methodology-note p {
+            margin: 0;
+            color: #f1f5f9;
+        }
+
+        /* Validity Badges */
+        .validity-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .validity-badge.high-risk {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .validity-badge.critical {
+            background: rgba(0, 0, 0, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .validity-badge.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .validity-badge.valid {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <div class="header-top">
-                <h1>Enterprise Applications Security Report</h1>
+        <!-- Updated Navbar Section -->
+        <div class="navbar">
+            <h1>Enterprise Applications Security Report</h1>
+            <div class="navbar-buttons">
+                <button class="info-button" onclick="toggleInfo()">
+                    <i class="fas fa-info-circle"></i>
+                    Documentation
+                </button>
                 <button class="export-button" onclick="exportToCSV()">
                     <i class="fas fa-file-export"></i>
                     Export to CSV
                 </button>
             </div>
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="appNameFilter">Search Applications</label>
-                    <input type="text" id="appNameFilter" placeholder="Type to search...">
+        </div>
+
+        <!-- Updated Info Modal -->
+        <div id="infoModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-info-circle"></i> Documentation</h2>
+                    <button class="close-button" onclick="toggleInfo()">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <div class="filter-group">
-                    <label for="riskScoreFilter">Risk Level</label>
-                    <select id="riskScoreFilter">
-                        <option value="all">All Risk Levels</option>
-                        <option value="critical">Critical (8-10)</option>
-                        <option value="high">High (6-7)</option>
-                        <option value="medium">Medium (4-5)</option>
-                        <option value="low">Low (0-3)</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="appTypeFilter">Application Type</label>
-                    <select id="appTypeFilter">
-                        <option value="all">All Types</option>
-                        <option value="internal">Internal</option>
-                        <option value="external">External</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="expiryStatusFilter">Expiry Status</label>
-                    <select id="expiryStatusFilter">
-                        <option value="all">All Statuses</option>
-                        <option value="valid">Valid</option>
-                        <option value="expired">Expired</option>
-                        <option value="no-expiry">No Expiry</option>
-                    </select>
+                <div class="modal-body">
+                    <div class="info-section">
+                        <h3>🔍 Field Descriptions</h3>
+                        <ul>
+                            <li><strong>Application Name:</strong> The display name of the application in Azure AD.</li>
+                            <li><strong>Risk Score:</strong> A calculated value (1-10) based on:
+                                <ul>
+                                    <li>Number and type of permissions granted</li>
+                                    <li>Credential expiration status</li>
+                                    <li>Publisher verification status</li>
+                                    <li>Number of credentials</li>
+                                </ul>
+                            </li>
+                            <li><strong>Application Type:</strong> Internal (single-tenant) or External (multi-tenant) application.</li>
+                            <li><strong>Application/Object ID:</strong> Unique identifiers in Azure AD.</li>
+                            <li><strong>Sign-in Audience:</strong> Defines who can use the application (My org only, All Microsoft accounts, etc.).</li>
+                            <li><strong>Verified Publisher:</strong> Whether Microsoft has verified the application publisher.</li>
+                            <li><strong>Password Credentials:</strong> Number of client secrets/certificates configured.</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h3>📊 Risk Scoring Methodology</h3>
+                        <div class="methodology-content">
+                            <p>Applications are assigned a risk score from 1 to 10 based on multiple security factors:</p>
+                            
+                            <div class="methodology-category">
+                                <h4>Permission Sensitivity</h4>
+                                <ul>
+                                    <li>Application Permissions (direct access) have higher weight than Delegated Permissions (user context)</li>
+                                    <li>Permissions are categorized and weighted as follows:</li>
+                                    <table class="scoring-table">
+                                        <tr>
+                                            <th>Category</th>
+                                            <th>Application Weight</th>
+                                            <th>Delegated Weight</th>
+                                            <th>Example</th>
+                                        </tr>
+                                        <tr class="critical">
+                                            <td>Critical</td>
+                                            <td>8 points</td>
+                                            <td>6 points</td>
+                                            <td>Directory.ReadWrite.All</td>
+                                        </tr>
+                                        <tr class="high">
+                                            <td>High</td>
+                                            <td>6 points</td>
+                                            <td>4 points</td>
+                                            <td>Files.ReadWrite.All</td>
+                                        </tr>
+                                        <tr class="medium">
+                                            <td>Medium</td>
+                                            <td>4 points</td>
+                                            <td>3 points</td>
+                                            <td>Mail.Send</td>
+                                        </tr>
+                                        <tr class="low">
+                                            <td>Low</td>
+                                            <td>2 points</td>
+                                            <td>1 point</td>
+                                            <td>User.Read</td>
+                                        </tr>
+                                    </table>
+                                </ul>
+                            </div>
+
+                            <div class="methodology-category">
+                                <h4>Risk Multipliers</h4>
+                                <ul>
+                                    <li><strong>Multiple High-Privilege Permissions:</strong>
+                                        <ul>
+                                            <li>Application Permissions: 1.5x multiplier for 2+ high-risk permissions</li>
+                                            <li>Delegated Permissions: 1.2x multiplier for 2+ high-risk permissions</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="methodology-category">
+                                <h4>Additional Risk Factors</h4>
+                                <ul>
+                                    <li><strong>Credential Count:</strong> +1 point if more than two password credentials</li>
+                                    <li><strong>Publisher Status:</strong> +1 point if publisher is not verified</li>
+                                    <li><strong>Read-Only Cap:</strong> Maximum of 3 points from read-only permissions</li>
+                                </ul>
+                            </div>
+
+                            <div class="methodology-note">
+                                <i class="fas fa-info-circle"></i>
+                                <p>The final score is capped at 10. Applications scoring 8 or higher should be prioritized for security review.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h3>🔑 API Permissions Guide</h3>
+                        <div class="permissions-info">
+                            <div class="risk-category critical">
+                                <h4><i class="fas fa-radiation-alt"></i> Critical Risk Permissions</h4>
+                                <ul>
+                                    <li><strong>Directory.ReadWrite.All:</strong> Full access to read and write directory data
+                                        <ul>
+                                            <li>Create/delete users and groups</li>
+                                            <li>Assign roles and manage licenses</li>
+                                            <li>Update organization settings</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>RoleManagement.ReadWrite.Directory:</strong> Manage role assignments and role definitions</li>
+                                    <li><strong>Application.ReadWrite.All:</strong> Full access to manage applications and service principals</li>
+                                    <li><strong>AppRoleAssignment.ReadWrite.All:</strong> Manage application role assignments</li>
+                                </ul>
+                            </div>
+
+                            <div class="risk-category high">
+                                <h4><i class="fas fa-exclamation-triangle"></i> High Risk Permissions</h4>
+                                <ul>
+                                    <li><strong>Mail.ReadWrite.All:</strong> Read and write all user mail</li>
+                                    <li><strong>Files.ReadWrite.All:</strong> Full access to all SharePoint files</li>
+                                    <li><strong>User.ReadWrite.All:</strong> Read and write all user profiles</li>
+                                    <li><strong>Group.ReadWrite.All:</strong> Read and write all groups</li>
+                                </ul>
+                            </div>
+
+                            <div class="risk-category medium">
+                                <h4><i class="fas fa-shield-alt"></i> Medium Risk Permissions</h4>
+                                <ul>
+                                    <li><strong>Mail.Send:</strong> Send mail as any user</li>
+                                    <li><strong>Sites.ReadWrite.All:</strong> Read and write all SharePoint site collections</li>
+                                    <li><strong>Calendar.ReadWrite:</strong> Read and write calendar items</li>
+                                    <li><strong>Device.ReadWrite.All:</strong> Read and write all device properties</li>
+                                </ul>
+                            </div>
+
+                            <div class="risk-category low">
+                                <h4><i class="fas fa-check-circle"></i> Low Risk Permissions</h4>
+                                <ul>
+                                    <li><strong>User.Read:</strong> Sign in and read user profile</li>
+                                    <li><strong>Directory.Read.All:</strong> Read directory data</li>
+                                    <li><strong>Group.Read.All:</strong> Read all groups</li>
+                                    <li><strong>Sites.Read.All:</strong> Read items in all site collections</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="filter-stats">Showing all applications</div>
         </div>
+
+        <div class="filter-controls">
+            <input type="text" id="appNameFilter" placeholder="Search Applications">
+            <select id="riskScoreFilter">
+                <option value="all">All Risk Levels</option>
+                <option value="critical">Critical (8-10)</option>
+                <option value="high">High (6-7)</option>
+                <option value="medium">Medium (4-5)</option>
+                <option value="low">Low (0-3)</option>
+            </select>
+            <select id="appTypeFilter">
+                <option value="all">All Types</option>
+                <option value="internal">Internal</option>
+                <option value="external">External</option>
+            </select>
+            <select id="expiryStatusFilter">
+                <option value="all">All Statuses</option>
+                <option value="High Risk">No Expiry (High Risk)</option>
+                <option value="Critical">Expired (Critical)</option>
+                <option value="Warning">Expiring Soon</option>
+                <option value="Valid">Valid</option>
+            </select>
+            <select id="sortFilter">
+                <option value="none">Sort By...</option>
+                <option value="riskScore-desc">Highest Risk Score First</option>
+                <option value="riskScore-asc">Lowest Risk Score First</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="permissions-desc">Most Permissions First</option>
+                <option value="created-desc">Newest First</option>
+                <option value="created-asc">Oldest First</option>
+            </select>
+        </div>
+        <div class="filter-stats">Showing all applications</div>
         <div class="apps-grid">
 "@
 
@@ -1159,60 +1642,77 @@ foreach ($row in $csvData) {
     
     # Determine expiry status
     $expiryStatus = if ($null -eq $row.DaysUntilExpiry) { 
-        "no-expiry" 
+        "High Risk"  # No expiration set
     } elseif ($row.DaysUntilExpiry -lt 0) { 
-        "expired" 
+        "Critical"   # Already expired
+    } elseif ($row.DaysUntilExpiry -le 30) { 
+        "Warning"    # Expiring soon
     } else { 
-        "valid" 
+        "Valid"      # Valid credentials
     }
 
     # Calculate risk score
     $riskScore = [int]$row.RiskScore
 
+    # Update the validity badge generation
+    $validityBadgeHtml = switch ($row.ExpiryStatus) {
+        "High Risk" { @"
+            <div class='validity-badge high-risk'>
+                <i class='fas fa-exclamation-triangle'></i>
+                No Expiry Set
+            </div>
+"@ }
+        "Critical" { @"
+            <div class='validity-badge critical'>
+                <i class='fas fa-radiation-alt'></i>
+                Expired
+            </div>
+"@ }
+        "Warning" { @"
+            <div class='validity-badge warning'>
+                <i class='fas fa-exclamation-circle'></i>
+                Expires in $($row.DaysUntilExpiry) days
+            </div>
+"@ }
+        "Valid" { @"
+            <div class='validity-badge valid'>
+                <i class='fas fa-check-circle'></i>
+                Valid ($($row.DaysUntilExpiry) days)
+            </div>
+"@ }
+        default { @"
+            <div class='validity-badge high-risk'>
+                <i class='fas fa-exclamation-triangle'></i>
+                No Expiry Set
+            </div>
+"@ }
+    }
+
     $script:htmlContent += @"
             <div class='app-card' 
-                data-apptype='$appType' 
+                data-apptype='$([System.Web.HttpUtility]::HtmlEncode($row.ApplicationType))'
                 data-expirystatus='$expiryStatus'
                 data-riskscore='$riskScore'>
                 <div class='app-header'>
-                    <div class='app-title'>
-                        <div class='app-icon'>
-                            <i class='fas fa-puzzle-piece'></i>
-                        </div>
-                        <div class='app-name'>$([System.Web.HttpUtility]::HtmlEncode($row.DisplayName))</div>
+                    <div class='app-icon'>
+                       <i class="fas fa-cube"></i> 
                     </div>
-                    <div class='app-meta'>
-                        <div class='risk-score $(
-                            if ($riskScore -ge 8) { "critical" }
-                            elseif ($riskScore -ge 6) { "high" }
-                            elseif ($riskScore -ge 4) { "medium" }
-                            else { "low" }
-                        )'>
-                            <i class='fas $(
-                                if ($riskScore -ge 8) { "fa-radiation-alt" }
-                                elseif ($riskScore -ge 6) { "fa-exclamation-triangle" }
-                                elseif ($riskScore -ge 4) { "fa-shield-alt" }
-                                else { "fa-check-circle" }
-                            )'></i>
-                            Risk Score: $riskScore
-                        </div>
-                        <div class='status-badge $expiryStatus'>
-                            <i class='fas $(
-                                if ($null -eq $row.DaysUntilExpiry) { "fa-infinity" }
-                                elseif ($row.DaysUntilExpiry -lt 0) { "fa-exclamation-circle" }
-                                else { "fa-check-circle" }
-                            )'></i>
-                            $(
-                                if ($null -eq $row.DaysUntilExpiry) {
-                                    "No Expiry"
-                                } elseif ($row.DaysUntilExpiry -lt 0) {
-                                    "Expired ($($row.DaysUntilExpiry * -1) days ago)"
-                                } else {
-                                    "Valid ($($row.DaysUntilExpiry) days)"
-                                }
-                            )
-                        </div>
+                    <div class='app-name'>$([System.Web.HttpUtility]::HtmlEncode($row.DisplayName))</div>
+                    <div class='risk-score $(
+                        if ($riskScore -ge 8) { "critical" }
+                        elseif ($riskScore -ge 6) { "high" }
+                        elseif ($riskScore -ge 4) { "medium" }
+                        else { "low" }
+                    )'>
+                        <i class='fas $(
+                            if ($riskScore -ge 8) { "fa-radiation-alt" }
+                            elseif ($riskScore -ge 6) { "fa-exclamation-triangle" }
+                            elseif ($riskScore -ge 4) { "fa-shield-alt" }
+                            else { "fa-check-circle" }
+                        )'></i>
+                        Risk Score: $riskScore
                     </div>
+                    $validityBadgeHtml
                 </div>
                 <div class='app-body'>
                     <div class='detail-item' data-tooltip="Unique identifier for the application in Azure AD">
@@ -1257,29 +1757,7 @@ foreach ($row in $csvData) {
                                 "<div class='permission-item low' data-tooltip='No permissions have been granted'><i class='fas fa-ban'></i>None</div>" 
                             } else { 
                                 ($row.ApplicationPermissions -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { 
-                                    $permClass = if ($_ -match '(FullControl|full_access|admin|.+Admin)') { 'critical' }
-                                               elseif ($_ -match '(Write|Delete|Create|Manage)') { 'high' }
-                                               elseif ($_ -match 'ReadWrite') { 'elevated' }
-                                               elseif ($_ -match 'Read') { 'moderate' }
-                                               else { 'low' }
-                                    
-                                    $tooltip = switch ($permClass) {
-                                        'critical' { "CRITICAL RISK: Full administrative access - Requires immediate security review" }
-                                        'high' { "HIGH RISK: Write/modify permissions - Can make system changes" }
-                                        'elevated' { "ELEVATED RISK: Combined read-write access - Extended privileges" }
-                                        'moderate' { "MODERATE RISK: Read-only access - Limited data exposure" }
-                                        'low' { "LOW RISK: Basic access - Minimal security impact" }
-                                    }
-                                    
-                                    $icon = switch ($permClass) {
-                                        'critical' { 'fa-user-shield' }
-                                        'high' { 'fa-pen-fancy' }
-                                        'elevated' { 'fa-edit' }
-                                        'moderate' { 'fa-eye' }
-                                        'low' { 'fa-info-circle' }
-                                    }
-                                    
-                                    "<div class='permission-item $permClass' data-tooltip='$tooltip'><i class='fas $icon'></i>$([System.Web.HttpUtility]::HtmlEncode($_.Trim()))</div>"
+                                    Format-Permission $_.Trim()
                                 }) -join ""
                             })
                         </div>
@@ -1292,29 +1770,7 @@ foreach ($row in $csvData) {
                                 "<div class='permission-item low' data-tooltip='No permissions have been granted'><i class='fas fa-ban'></i>None</div>" 
                             } else { 
                                 ($row.DelegatedPermissions -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { 
-                                    $permClass = if ($_ -match '(FullControl|full_access|admin|.+Admin)') { 'critical' }
-                                               elseif ($_ -match '(Write|Delete|Create|Manage)') { 'high' }
-                                               elseif ($_ -match 'ReadWrite') { 'elevated' }
-                                               elseif ($_ -match 'Read') { 'moderate' }
-                                               else { 'low' }
-                                    
-                                    $tooltip = switch ($permClass) {
-                                        'critical' { "CRITICAL RISK: Full administrative access - Requires immediate security review" }
-                                        'high' { "HIGH RISK: Write/modify permissions - Can make system changes" }
-                                        'elevated' { "ELEVATED RISK: Combined read-write access - Extended privileges" }
-                                        'moderate' { "MODERATE RISK: Read-only access - Limited data exposure" }
-                                        'low' { "LOW RISK: Basic access - Minimal security impact" }
-                                    }
-                                    
-                                    $icon = switch ($permClass) {
-                                        'critical' { 'fa-user-shield' }
-                                        'high' { 'fa-pen-fancy' }
-                                        'elevated' { 'fa-edit' }
-                                        'moderate' { 'fa-eye' }
-                                        'low' { 'fa-info-circle' }
-                                    }
-                                    
-                                    "<div class='permission-item $permClass' data-tooltip='$tooltip'><i class='fas $icon'></i>$([System.Web.HttpUtility]::HtmlEncode($_.Trim()))</div>"
+                                    Format-Permission $_.Trim()
                                 }) -join ""
                             })
                         </div>
@@ -1327,85 +1783,191 @@ $script:htmlContent += @"
         </div>
     </div>
     <script>
-        // Debug function to help troubleshoot filtering
-        function debugElement(element, attribute) {
-            if (attribute) {
-                console.log('Debug ' + attribute + ':', element ? element.getAttribute(attribute) : 'Element not found');
-            } else {
-                console.log('Debug element:', element ? element.textContent : 'Element not found');
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
-            const appNameFilter = document.getElementById('appNameFilter');
-            const riskScoreFilter = document.getElementById('riskScoreFilter');
-            const appTypeFilter = document.getElementById('appTypeFilter');
-            const expiryStatusFilter = document.getElementById('expiryStatusFilter');
-            const filterStats = document.querySelector('.filter-stats');
-            const appCards = document.querySelectorAll('.app-card');
+            // Cache DOM elements
+            var appNameFilter = document.getElementById('appNameFilter');
+            var riskScoreFilter = document.getElementById('riskScoreFilter');
+            var appTypeFilter = document.getElementById('appTypeFilter');
+            var expiryStatusFilter = document.getElementById('expiryStatusFilter');
+            var sortFilter = document.getElementById('sortFilter');
+            var filterStats = document.querySelector('.filter-stats');
+            var appCards = document.querySelectorAll('.app-card');
+            var infoModal = document.getElementById('infoModal');
 
+            // Info Modal Functions
+            window.toggleInfo = function() {
+                if (infoModal) {
+                    infoModal.style.display = infoModal.style.display === 'block' ? 'none' : 'block';
+                }
+            }
+
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                if (event.target === infoModal) {
+                    infoModal.style.display = 'none';
+                }
+            }
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && infoModal) {
+                    infoModal.style.display = 'none';
+                }
+            });
+
+            // Rest of your existing filterCards and other functions...
             function filterCards() {
-                console.log('Filtering started...');
-                const searchTerm = appNameFilter.value.toLowerCase();
-                const riskLevel = riskScoreFilter.value;
-                const appType = appTypeFilter.value;
-                const expiryStatus = expiryStatusFilter.value;
+                var searchTerm = appNameFilter.value.toLowerCase();
+                var riskLevel = riskScoreFilter.value;
+                var appType = appTypeFilter.value;
+                var expiryStatus = expiryStatusFilter.value;
+                var sortValue = sortFilter.value;
 
-                let visibleCount = 0;
+                // Convert NodeList to Array for easier manipulation
+                var cards = Array.prototype.slice.call(appCards);
 
-                appCards.forEach(card => {
-                    // Debug logging
-                    console.log('Processing card:', card);
-                    debugElement(card.querySelector('.app-name'));
-                    debugElement(card, 'data-riskscore');
-                    debugElement(card, 'data-apptype');
-                    debugElement(card, 'data-expirystatus');
+                // Apply filters
+                cards = cards.filter(function(card) {
+                    var appName = card.querySelector('.app-name').textContent.toLowerCase();
+                    var riskScore = parseInt(card.getAttribute('data-riskscore'));
+                    var cardType = card.getAttribute('data-apptype');
+                    var cardExpiry = card.getAttribute('data-expirystatus');
 
-                    const appName = card.querySelector('.app-name').textContent.toLowerCase();
-                    const riskScore = parseInt(card.getAttribute('data-riskscore'));
-                    const cardType = card.getAttribute('data-apptype');
-                    const cardExpiry = card.getAttribute('data-expirystatus');
-
-                    const matchesSearch = appName.includes(searchTerm);
-                    const matchesRisk = riskLevel === 'all' || 
+                    var matchesSearch = appName.includes(searchTerm);
+                    var matchesRisk = riskLevel === 'all' || 
                         (riskLevel === 'critical' && riskScore >= 8) ||
                         (riskLevel === 'high' && riskScore >= 6 && riskScore < 8) ||
                         (riskLevel === 'medium' && riskScore >= 4 && riskScore < 6) ||
                         (riskLevel === 'low' && riskScore < 4);
-                    const matchesType = appType === 'all' || cardType === appType;
-                    const matchesExpiry = expiryStatus === 'all' || cardExpiry === expiryStatus;
+                    var matchesType = appType === 'all' || cardType === appType;
+                    var matchesExpiry = expiryStatus === 'all' || cardExpiry === expiryStatus;
 
-                    // Debug logging
-                    console.log({
-                        appName: appName,
-                        riskScore: riskScore,
-                        cardType: cardType,
-                        cardExpiry: cardExpiry,
-                        matchesSearch: matchesSearch,
-                        matchesRisk: matchesRisk,
-                        matchesType: matchesType,
-                        matchesExpiry: matchesExpiry
-                    });
-
-                    if (matchesSearch && matchesRisk && matchesType && matchesExpiry) {
-                        card.style.display = 'flex';
-                        visibleCount++;
-                    } else {
-                        card.style.display = 'none';
-                    }
+                    return matchesSearch && matchesRisk && matchesType && matchesExpiry;
                 });
 
-                filterStats.textContent = 'Showing ' + visibleCount + ' of ' + appCards.length + ' applications';
+                // Apply sorting
+                if (sortValue !== 'none') {
+                    cards.sort(function(a, b) {
+                        switch (sortValue) {
+                            case 'riskScore-desc':
+                                return parseInt(b.getAttribute('data-riskscore')) - parseInt(a.getAttribute('data-riskscore'));
+                            case 'riskScore-asc':
+                                return parseInt(a.getAttribute('data-riskscore')) - parseInt(b.getAttribute('data-riskscore'));
+                            case 'name-asc':
+                                return a.querySelector('.app-name').textContent.localeCompare(b.querySelector('.app-name').textContent);
+                            case 'name-desc':
+                                return b.querySelector('.app-name').textContent.localeCompare(a.querySelector('.app-name').textContent);
+                            case 'permissions-desc':
+                                var getPermCount = function(card) {
+                                    var lists = card.querySelectorAll('.permissions-list');
+                                    var count = 0;
+                                    Array.prototype.forEach.call(lists, function(list) {
+                                        count += list.querySelectorAll('.permission-item').length;
+                                    });
+                                    return count;
+                                };
+                                return getPermCount(b) - getPermCount(a);
+                            case 'created-desc':
+                            case 'created-asc':
+                                var getDate = function(card) {
+                                    var dateText = card.querySelectorAll('.detail-value')[2].textContent;
+                                    return new Date(dateText);
+                                };
+                                var dateA = getDate(a);
+                                var dateB = getDate(b);
+                                return sortValue === 'created-desc' ? dateB - dateA : dateA - dateB;
+                            default:
+                                return 0;
+                        }
+                    });
+                }
+
+                // Update the display
+                var container = document.querySelector('.apps-grid');
+                container.innerHTML = '';
+                cards.forEach(function(card) {
+                    container.appendChild(card);
+                });
+
+                // Update stats
+                filterStats.textContent = 'Showing ' + cards.length + ' of ' + appCards.length + ' applications';
             }
 
-            // Add event listeners
-            appNameFilter.addEventListener('input', filterCards);
-            riskScoreFilter.addEventListener('change', filterCards);
-            appTypeFilter.addEventListener('change', filterCards);
-            expiryStatusFilter.addEventListener('change', filterCards);
+            // Export function
+            window.exportToCSV = function() {
+                var visibleCards = Array.prototype.slice.call(document.querySelectorAll('.app-card')).filter(function(card) {
+                    return window.getComputedStyle(card).display !== 'none';
+                });
 
-            // Initial filter
-            console.log('Initial filter running...');
+                var headers = [
+                    'Application Name',
+                    'Application Type',
+                    'Application ID',
+                    'Object ID',
+                    'Created Date',
+                    'Risk Score',
+                    'Expiry Status',
+                    'Sign-in Audience',
+                    'Verified Publisher',
+                    'Password Credentials Count',
+                    'Application Permissions',
+                    'Delegated Permissions'
+                ];
+
+                var csvContent = headers.join(',') + '\n';
+
+                visibleCards.forEach(function(card) {
+                    var row = [
+                        card.querySelector('.app-name').textContent.replace(/,/g, ';'),
+                        card.getAttribute('data-apptype'),
+                        card.querySelector('.detail-value').textContent.replace(/,/g, ';'),
+                        card.querySelectorAll('.detail-value')[1].textContent.replace(/,/g, ';'),
+                        card.querySelectorAll('.detail-value')[2].textContent.replace(/,/g, ';'),
+                        card.getAttribute('data-riskscore'),
+                        card.getAttribute('data-expirystatus'),
+                        card.querySelectorAll('.detail-value')[4].textContent.replace(/,/g, ';'),
+                        card.querySelectorAll('.detail-value')[5].textContent.replace(/,/g, ';'),
+                        card.querySelectorAll('.detail-value')[6].textContent.replace(/,/g, ';')
+                    ];
+
+                    // Add permissions
+                    var appPerms = Array.prototype.slice.call(card.querySelectorAll('.permissions-list')[0].querySelectorAll('.permission-item'))
+                        .map(function(p) { return p.textContent.trim(); })
+                        .join(';')
+                        .replace(/,/g, ';');
+                    var delPerms = Array.prototype.slice.call(card.querySelectorAll('.permissions-list')[1].querySelectorAll('.permission-item'))
+                        .map(function(p) { return p.textContent.trim(); })
+                        .join(';')
+                        .replace(/,/g, ';');
+
+                    row.push(appPerms, delPerms);
+                    csvContent += row.join(',') + '\n';
+                });
+
+                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                var link = document.createElement('a');
+                var url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'EnterpriseAppsReport.csv');
+                link.style.visibility = 'hidden';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // Add event listeners
+            var filters = ['appNameFilter', 'riskScoreFilter', 'appTypeFilter', 'expiryStatusFilter', 'sortFilter'];
+            filters.forEach(function(filterId) {
+                var element = document.getElementById(filterId);
+                if (element) {
+                    element.addEventListener('change', filterCards);
+                    element.addEventListener('input', filterCards);
+                }
+            });
+
+            // Initial filter application
             filterCards();
         });
     </script>
