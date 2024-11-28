@@ -535,7 +535,7 @@ $script:htmlContent = @"
         }
 
         body {
-            background: linear-gradient(145deg, #0f172a, #1e293b);
+            background: #0f172a;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             color: #f1f5f9;
             min-height: 100vh;
@@ -1397,10 +1397,10 @@ $script:htmlContent = @"
         }
 
         .validity-badge.critical {
-            background: rgba(0, 0, 0, 0.2);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.5);
-            animation: pulse 2s infinite;
+            background: rgba(148, 163, 184, 0.15); /* Changed to a more neutral color */
+            color: #94a3b8;                        /* Changed to gray */
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            /* Removed animation */
         }
 
         .validity-badge.warning {
@@ -1415,11 +1415,7 @@ $script:htmlContent = @"
             border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+        /* Removed pulse animation */
     </style>
 </head>
 <body>
@@ -1917,34 +1913,41 @@ $script:htmlContent += @"
                 var csvContent = headers.join(',') + '\n';
 
                 visibleCards.forEach(function(card) {
+                    // Helper function to clean and format text for CSV
+                    function cleanForCSV(text) {
+                        // Remove any existing quotes and commas, replace with semicolons
+                        return '"' + text.replace(/"/g, '""').trim() + '"';
+                    }
+
+                    // Get permissions text while preserving formatting
+                    function getPermissions(permissionsList) {
+                        if (!permissionsList) return '""';
+                        var permissions = Array.from(permissionsList.querySelectorAll('.permission-text'))
+                            .map(p => p.textContent.replace(/Microsoft Graph - /g, '').trim())
+                            .filter(p => p && p !== 'None')
+                            .join('; ');
+                        return permissions ? cleanForCSV(permissions) : '""';
+                    }
+
                     var row = [
-                        card.querySelector('.app-name').textContent.replace(/,/g, ';'),
-                        card.getAttribute('data-apptype'),
-                        card.querySelector('.detail-value').textContent.replace(/,/g, ';'),
-                        card.querySelectorAll('.detail-value')[1].textContent.replace(/,/g, ';'),
-                        card.querySelectorAll('.detail-value')[2].textContent.replace(/,/g, ';'),
+                        cleanForCSV(card.querySelector('.app-name').textContent),
+                        cleanForCSV(card.getAttribute('data-apptype')),
+                        cleanForCSV(card.querySelector('.detail-value').textContent),
+                        cleanForCSV(card.querySelectorAll('.detail-value')[1].textContent),
+                        cleanForCSV(card.querySelectorAll('.detail-value')[2].textContent),
                         card.getAttribute('data-riskscore'),
-                        card.getAttribute('data-expirystatus'),
-                        card.querySelectorAll('.detail-value')[4].textContent.replace(/,/g, ';'),
-                        card.querySelectorAll('.detail-value')[5].textContent.replace(/,/g, ';'),
-                        card.querySelectorAll('.detail-value')[6].textContent.replace(/,/g, ';')
+                        cleanForCSV(card.getAttribute('data-expirystatus')),
+                        cleanForCSV(card.querySelectorAll('.detail-value')[4].textContent),
+                        cleanForCSV(card.querySelectorAll('.detail-value')[5].textContent),
+                        cleanForCSV(card.querySelectorAll('.detail-value')[6].textContent),
+                        getPermissions(card.querySelectorAll('.permissions-list')[0]),
+                        getPermissions(card.querySelectorAll('.permissions-list')[1])
                     ];
 
-                    // Add permissions
-                    var appPerms = Array.prototype.slice.call(card.querySelectorAll('.permissions-list')[0].querySelectorAll('.permission-item'))
-                        .map(function(p) { return p.textContent.trim(); })
-                        .join(';')
-                        .replace(/,/g, ';');
-                    var delPerms = Array.prototype.slice.call(card.querySelectorAll('.permissions-list')[1].querySelectorAll('.permission-item'))
-                        .map(function(p) { return p.textContent.trim(); })
-                        .join(';')
-                        .replace(/,/g, ';');
-
-                    row.push(appPerms, delPerms);
                     csvContent += row.join(',') + '\n';
                 });
 
-                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                var blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
                 var link = document.createElement('a');
                 var url = URL.createObjectURL(blob);
                 
